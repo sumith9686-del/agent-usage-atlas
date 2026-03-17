@@ -1,10 +1,10 @@
 # Agent Usage Atlas
 
+**English** | [中文](README_CN.md)
+
 > Turn your local AI coding agent logs into a rich, interactive analytics dashboard — zero dependencies, fully offline, one command.
 
-一个从本地 AI 编程 Agent 日志生成可视化仪表盘的工具。支持 Codex CLI / Claude Code / Cursor 三大 Agent 栈，25+ 交互式图表，纯 Python 标准库实现。
-
-![Hero Overview](docs/screenshots/hero-overview.png)
+![Hero Overview](docs/screenshots/en/hero-overview.png)
 
 ## Why Agent Usage Atlas?
 
@@ -46,16 +46,16 @@ Agent Usage Atlas reads your local log files (`~/.codex/`, `~/.claude/`, `~/.cur
 <td><strong>Token & Activity</strong><br>Daily token trends, source radar, narrative summary, rose chart</td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/cost-charts.png" alt="Cost Analysis" /></td>
-<td><img src="docs/screenshots/token-charts.png" alt="Token Charts" /></td>
+<td><img src="docs/screenshots/en/cost-charts.png" alt="Cost Analysis" /></td>
+<td><img src="docs/screenshots/en/token-charts.png" alt="Token Charts" /></td>
 </tr>
 <tr>
 <td><strong>Heatmap & Sessions</strong><br>Activity heatmap, source radar, token calendar, session bubble</td>
 <td><strong>Tool Intelligence</strong><br>Tool ranking, bigram chord diagram, top commands, efficiency metrics</td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/heatmap-sessions.png" alt="Heatmap & Sessions" /></td>
-<td><img src="docs/screenshots/tool-charts.png" alt="Tool Intelligence" /></td>
+<td><img src="docs/screenshots/en/heatmap-sessions.png" alt="Heatmap & Sessions" /></td>
+<td><img src="docs/screenshots/en/tool-charts.png" alt="Tool Intelligence" /></td>
 </tr>
 </table>
 

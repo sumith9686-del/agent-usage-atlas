@@ -76,7 +76,7 @@ def generate_dashboard_html(days: int, since: str | None) -> Path:
     return out
 
 
-def build_wrapper_html(dashboard_uri: str, scroll_y: int) -> Path:
+def build_wrapper_html(dashboard_uri: str, scroll_y: int, lang: str = "zh") -> Path:
     """Create a wrapper HTML that iframes the dashboard at a given scroll offset."""
     html = f"""\
 <!DOCTYPE html>
@@ -84,6 +84,7 @@ def build_wrapper_html(dashboard_uri: str, scroll_y: int) -> Path:
 <style>html,body{{margin:0;padding:0;background:{PAGE_BG};overflow:hidden}}</style>
 </head><body><script>
 (function(){{
+  localStorage.setItem('atlas-lang','{lang}');
   var f=document.createElement('iframe');
   f.src='{dashboard_uri}';
   f.style.cssText='width:{WIDTH}px;height:15000px;border:none;position:absolute;top:-{scroll_y}px;left:0';
@@ -153,12 +154,35 @@ def auto_crop(path: Path, target_height: int) -> None:
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
+def capture_lang(chrome: str, dashboard_uri: str, outdir: Path, lang: str) -> int:
+    """Capture all sections for a given language. Returns success count."""
+    print(f"\n[lang] Capturing {lang.upper()} screenshots → {outdir}")
+    outdir.mkdir(parents=True, exist_ok=True)
+    ok_count = 0
+    for name, scroll_y, vh in SECTIONS:
+        out = outdir / f"{name}.png"
+        wrapper = build_wrapper_html(dashboard_uri, scroll_y, lang=lang)
+        try:
+            if capture(chrome, wrapper, out, WIDTH, vh):
+                auto_crop(out, vh)
+                size_kb = out.stat().st_size / 1024
+                print(f"  [ok] {name}.png ({size_kb:.0f} KB)")
+                ok_count += 1
+            else:
+                print(f"  [fail] {name}.png")
+        finally:
+            wrapper.unlink(missing_ok=True)
+    return ok_count
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Capture dashboard screenshots.")
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--since", type=str, default=None)
     parser.add_argument("--chrome", type=str, default=None, help="Path to Chrome/Chromium binary")
     parser.add_argument("--outdir", type=str, default=None, help="Output directory (default: docs/screenshots)")
+    parser.add_argument("--lang", type=str, default=None, choices=["zh", "en"],
+                        help="Capture only one language (default: both zh and en)")
     args = parser.parse_args()
 
     # Find Chrome
@@ -170,35 +194,28 @@ def main() -> None:
 
     # Output directory
     repo_root = Path(__file__).resolve().parent.parent
-    outdir = Path(args.outdir) if args.outdir else repo_root / "docs" / "screenshots"
-    outdir.mkdir(parents=True, exist_ok=True)
-    print(f"[ok] Output: {outdir}")
+    base_outdir = Path(args.outdir) if args.outdir else repo_root / "docs" / "screenshots"
+    print(f"[ok] Output base: {base_outdir}")
 
     # Generate static dashboard
     dashboard = generate_dashboard_html(days=args.days, since=args.since)
     dashboard_uri = dashboard.as_uri()
 
-    # Capture each section
-    ok_count = 0
-    for name, scroll_y, vh in SECTIONS:
-        out = outdir / f"{name}.png"
-        wrapper = build_wrapper_html(dashboard_uri, scroll_y)
-        try:
-            if capture(chrome, wrapper, out, WIDTH, vh):
-                auto_crop(out, vh)
-                size_kb = out.stat().st_size / 1024
-                print(f"  [ok] {name}.png ({size_kb:.0f} KB)")
-                ok_count += 1
-            else:
-                print(f"  [fail] {name}.png")
-        finally:
-            wrapper.unlink(missing_ok=True)
+    # Determine languages to capture
+    langs = [args.lang] if args.lang else ["zh", "en"]
+
+    total_ok = 0
+    total_sections = 0
+    for lang in langs:
+        outdir = base_outdir / lang
+        total_ok += capture_lang(chrome, dashboard_uri, outdir, lang)
+        total_sections += len(SECTIONS)
 
     # Cleanup
     dashboard.unlink(missing_ok=True)
     dashboard.parent.rmdir()
 
-    print(f"\nDone: {ok_count}/{len(SECTIONS)} screenshots saved to {outdir}")
+    print(f"\nDone: {total_ok}/{total_sections} screenshots saved")
 
 
 if __name__ == "__main__":
