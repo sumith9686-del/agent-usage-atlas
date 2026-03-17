@@ -23,16 +23,28 @@ jobs:
           pip install build
           python -m build --sdist
 
-      - name: Generate Homebrew formula
-        run: python scripts/generate_formula.py
-
-      - name: Upload formula as release asset
+      - name: Create GitHub Release & upload sdist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
-          # Create release if it doesn't exist
           gh release view "$TAG" 2>/dev/null || gh release create "$TAG" --generate-notes
-          # Upload formula and sdist
           gh release upload "$TAG" dist/*.tar.gz --clobber
-          gh release upload "$TAG" Formula/agent-usage-atlas.rb --clobber
+
+      - name: Generate formula (uses release tarball SHA)
+        run: python scripts/generate_formula.py
+
+      - name: Push formula to homebrew-tap
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          git clone https://x-access-token:${TAP_TOKEN}@github.com/heggria/homebrew-tap.git /tmp/tap
+          cp Formula/agent-usage-atlas.rb /tmp/tap/Formula/agent-usage-atlas.rb
+          cd /tmp/tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/agent-usage-atlas.rb
+          git commit -m "agent-usage-atlas ${VERSION}" || echo "No changes"
+          git push
