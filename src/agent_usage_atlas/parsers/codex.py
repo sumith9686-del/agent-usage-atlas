@@ -8,7 +8,7 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
-from ..models import ParseResult, SessionMeta, TaskEvent, ToolCall, TurnDuration, UsageEvent
+from ..models import ParseResult, SessionMeta, TaskEvent, ToolCall, TurnDuration, UsageEvent, UserMessage
 from ._base import _read_json_lines, _si, _ts
 
 CODEX_ROOTS = [Path.home() / ".codex/archived_sessions", Path.home() / ".codex/sessions"]
@@ -24,6 +24,7 @@ def parse(start_utc, now_utc) -> ParseResult:
     metas, meta_seen = [], set()
     task_events = []
     turn_durations = []
+    user_messages = []
 
     # SQLite meta + session durations
     for root in CODEX_ROOTS:
@@ -174,6 +175,27 @@ def parse(start_utc, now_utc) -> ParseResult:
                             except (ValueError, TypeError):
                                 pass
 
+                elif pl_type == "message":
+                    # User input message
+                    role = pl.get("role")
+                    if role == "user" and start_utc <= ts <= now_utc:
+                        content = pl.get("content")
+                        text_parts = []
+                        if isinstance(content, str):
+                            text_parts.append(content)
+                        elif isinstance(content, list):
+                            for blk in content:
+                                if isinstance(blk, dict) and blk.get("type") == "input_text":
+                                    text_parts.append(blk.get("text", ""))
+                                elif isinstance(blk, str):
+                                    text_parts.append(blk)
+                        full_text = " ".join(text_parts).strip()
+                        if full_text:
+                            user_messages.append(UserMessage(
+                                "Codex", ts, s,
+                                full_text[:200], len(full_text),
+                            ))
+
                 elif pl_type in ("task_started", "task_complete"):
                     if start_utc <= ts <= now_utc:
                         etype = "started" if pl_type == "task_started" else "complete"
@@ -212,4 +234,5 @@ def parse(start_utc, now_utc) -> ParseResult:
         session_metas=metas,
         turn_durations=turn_durations,
         task_events=task_events,
+        user_messages=user_messages,
     )

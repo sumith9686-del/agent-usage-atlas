@@ -73,6 +73,8 @@ class AggContext:
     cursor_codegen: list = field(default_factory=list)
     cursor_commits: list = field(default_factory=list)
     claude_stats_cache: dict = field(default_factory=dict)
+    user_messages: list = field(default_factory=list)
+    _raw_events: list = field(default_factory=list)
 
     @property
     def range_info(self) -> dict:
@@ -96,6 +98,7 @@ def build_context(
     cursor_codegen=None,
     cursor_commits=None,
     claude_stats_cache=None,
+    user_messages=None,
 ) -> AggContext:
     """Single-pass context builder."""
     source_rollups = defaultdict(
@@ -349,4 +352,6 @@ def build_context(
         cursor_codegen=cursor_codegen or [],
         cursor_commits=cursor_commits or [],
         claude_stats_cache=claude_stats_cache or {},
+        user_messages=user_messages or [],
+        _raw_events=events,
     )

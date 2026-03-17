@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from . import daily, extended, patterns, projects, sessions, story, tooling, totals, trends
+from . import daily, extended, insights, patterns, projects, prompts, sessions, story, tooling, totals, trends
 from ._context import build_context
 
 
@@ -19,6 +19,7 @@ def aggregate(
     cursor_codegen=None,
     cursor_commits=None,
     claude_stats_cache=None,
+    user_messages=None,
 ):
     ctx = build_context(
         events,
@@ -32,7 +33,10 @@ def aggregate(
         cursor_codegen=cursor_codegen,
         cursor_commits=cursor_commits,
         claude_stats_cache=claude_stats_cache,
+        user_messages=user_messages,
     )
+
+    prompt_data = prompts.compute(ctx)
 
     return {
         "range": ctx.range_info,
@@ -49,4 +53,6 @@ def aggregate(
         "trend_analysis": trends.compute(ctx),
         "story": story.compute(ctx),
         "extended": extended.compute(ctx, claude_stats_cache),
+        "prompts": prompt_data,
+        "insights": insights.compute(ctx, prompt_data),
     }

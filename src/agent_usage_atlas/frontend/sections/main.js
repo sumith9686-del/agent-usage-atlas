@@ -21,6 +21,9 @@ function renderDashboard(){
   renderCostCards();
   renderStory();
   renderSessionTable();
+  renderVaguePrompts();
+  renderExpensivePrompts();
+  renderInsights();
 
   /* First two charts render eagerly (above the fold) */
   renderDailyCostChart();

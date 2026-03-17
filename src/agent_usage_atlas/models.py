@@ -166,6 +166,15 @@ class CodeGenRecord:
 
 
 @dataclass
+class UserMessage:
+    source: str
+    timestamp: datetime
+    session_id: str
+    text: str  # first 200 chars
+    char_count: int  # original length
+
+
+@dataclass
 class ScoredCommit:
     commit_hash: str
     commit_date: datetime | None
@@ -188,6 +197,7 @@ class ParseResult:
     task_events: list[TaskEvent] = field(default_factory=list)
     code_gen: list[CodeGenRecord] = field(default_factory=list)
     scored_commits: list[ScoredCommit] = field(default_factory=list)
+    user_messages: list[UserMessage] = field(default_factory=list)
 
     def merge(self, other: ParseResult) -> None:
         self.events.extend(other.events)
@@ -197,6 +207,7 @@ class ParseResult:
         self.task_events.extend(other.task_events)
         self.code_gen.extend(other.code_gen)
         self.scored_commits.extend(other.scored_commits)
+        self.user_messages.extend(other.user_messages)
 
 
 # Formatting helpers

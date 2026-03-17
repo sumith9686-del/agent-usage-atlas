@@ -44,4 +44,45 @@ function renderHero(){
     const hintEl = document.getElementById(c.id + '-hint');
     if (hintEl) hintEl.textContent = c.hint;
   });
+
+  /* ── hero-stats mini grid ── */
+  const heroStatsDefs = [
+    {id: 'hs-sessions', label: t('lblHeroSessions'), value: T.tracked_session_count, fmt: fmtInt},
+    {id: 'hs-projects', label: t('lblHeroProjects'), value: T.project_count, fmt: fmtInt},
+    {id: 'hs-days', label: t('lblHeroDays'), value: data.range.day_count, fmt: fmtInt},
+    {id: 'hs-burn', label: t('lblHeroAvgBurn'), value: T.avg_daily_burn, fmt: fmtUSD, suffix: '/d'}
+  ];
+  const hsEl = document.getElementById('hero-stats');
+  if (!document.getElementById('hs-sessions')) {
+    hsEl.innerHTML = heroStatsDefs.map(c =>
+      `<div class="hero-stat"><div class="k">${c.label}</div><div class="v" id="${c.id}"></div></div>`
+    ).join('');
+  }
+  heroStatsDefs.forEach(c => {
+    const el = document.getElementById(c.id);
+    if (el) {
+      if (c.suffix) {
+        animateNum(el, c.value, v => c.fmt(v) + c.suffix);
+      } else {
+        animateNum(el, c.value, c.fmt);
+      }
+    }
+  });
+
+  /* ── source proportion bar ── */
+  const sbEl = document.getElementById('source-bar');
+  if (data.source_cards && data.source_cards.length && T.grand_total > 0 && !sbEl.querySelector('.source-bar')) {
+    const segs = data.source_cards.map(card => {
+      const pct = (card.total / T.grand_total * 100);
+      const name = card.source.toLowerCase();
+      return {name, pct, label: card.source};
+    }).filter(s => s.pct > 0);
+    sbEl.innerHTML =
+      `<div class="source-bar">${segs.map(s =>
+        `<div class="seg" style="width:${s.pct.toFixed(2)}%;background:var(--${s.name})"></div>`
+      ).join('')}</div>` +
+      `<div class="source-bar-legend">${segs.map(s =>
+        `<span class="source-bar-label"><span class="sbl-dot" style="background:var(--${s.name})"></span>${s.label} ${s.pct.toFixed(1)}%</span>`
+      ).join('')}</div>`;
+  }
 }

@@ -1,9 +1,19 @@
 # Agent Usage Atlas
 
+[![PyPI version](https://img.shields.io/pypi/v/agent-usage-atlas)](https://pypi.org/project/agent-usage-atlas/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/agent-usage-atlas)](https://pypi.org/project/agent-usage-atlas/)
+[![Python](https://img.shields.io/pypi/pyversions/agent-usage-atlas)](https://pypi.org/project/agent-usage-atlas/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > 一条命令，将本地 AI 编程 Agent 日志变成丰富的交互式分析仪表盘 — 零依赖、完全离线、开箱即用。
 
 [English](README.md) | **中文**
 
+<p align="center">
+  <a href="https://heggria.github.io/agent-usage-atlas/demo/"><strong>在线体验 Demo →</strong></a>
+</p>
+
+<!-- TODO: 用 vhs 录制后替换为 GIF -->
 ![Hero Overview](docs/screenshots/zh/hero-overview.png)
 
 ## 为什么选择 Agent Usage Atlas？

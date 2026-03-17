@@ -12,6 +12,7 @@ const I18N = {
     hintEstCost: '日均 {avg}，30 天投影 {proj}',
     hintCacheStack: '省下 {save}，命中率 {rate}',
     hintMedianSession: '{min} 分钟 / {cost}',
+    lblHeroSessions: '会话', lblHeroProjects: '项目', lblHeroDays: '天数', lblHeroAvgBurn: '日均花费',
     lblTotalCost: 'Total Cost', lblDailyAvg: 'Daily Average', lblCostPerMsg: 'Cost / Message', lblCacheSavings: 'Cache Savings',
     hintTotalCost: '{days} 天累计',
     hintDailyAvg: '峰值 {peak}: {cost}',
@@ -81,6 +82,18 @@ const I18N = {
     tblEvents: '{n} events', tblMin: '{n} min',
     lblCompleted: 'Completed', lblIncomplete: 'Incomplete',
     lblAiAdded: 'AI Added', lblHumanAdded: 'Human Added', lblAiDeleted: 'AI Deleted', lblHumanDeleted: 'Human Deleted',
+    divInsights: 'Insights & Prompts',
+    chartVagueList: '模糊提示排行', chartVagueListSub: '最常见的低效提示',
+    chartExpensive: '最贵 Prompt 排行', chartExpensiveSub: '按响应花费排序',
+    lblVagueCount: 'Vague Prompts', lblVagueRatio: 'Vague Ratio',
+    lblWastedTokens: 'Wasted Tokens', lblWastedCost: 'Wasted Cost',
+    hintVagueCount: '共 {total} 条用户消息',
+    hintVagueRatio: '{count} / {total}',
+    hintWastedTokens: '因模糊提示消耗',
+    hintWastedCost: '可优化的浪费',
+    tblRank: '#', tblPrompt: 'Prompt', tblPromptTokens: 'Tokens', tblPromptCost: 'Cost', tblPromptModel: 'Model', tblPromptSource: 'Source',
+    insightAction: '建议', insightActionEn: 'Suggestion',
+    lblInsightHigh: '高', lblInsightMedium: '中', lblInsightLow: '低', lblInsightInfo: '提示',
   },
   en: {
     heroTitle: 'Agent Stack Scoreboard',
@@ -93,6 +106,7 @@ const I18N = {
     hintEstCost: 'daily avg {avg}, 30d projection {proj}',
     hintCacheStack: 'saved {save}, hit rate {rate}',
     hintMedianSession: '{min} min / {cost}',
+    lblHeroSessions: 'Sessions', lblHeroProjects: 'Projects', lblHeroDays: 'Days', lblHeroAvgBurn: 'Avg Burn',
     lblTotalCost: 'Total Cost', lblDailyAvg: 'Daily Average', lblCostPerMsg: 'Cost / Message', lblCacheSavings: 'Cache Savings',
     hintTotalCost: '{days} days total',
     hintDailyAvg: 'peak {peak}: {cost}',
@@ -162,6 +176,18 @@ const I18N = {
     tblEvents: '{n} events', tblMin: '{n} min',
     lblCompleted: 'Completed', lblIncomplete: 'Incomplete',
     lblAiAdded: 'AI Added', lblHumanAdded: 'Human Added', lblAiDeleted: 'AI Deleted', lblHumanDeleted: 'Human Deleted',
+    divInsights: 'Insights & Prompts',
+    chartVagueList: 'Top Vague Prompts', chartVagueListSub: 'most common low-effort prompts',
+    chartExpensive: 'Most Expensive Prompts', chartExpensiveSub: 'ranked by response cost',
+    lblVagueCount: 'Vague Prompts', lblVagueRatio: 'Vague Ratio',
+    lblWastedTokens: 'Wasted Tokens', lblWastedCost: 'Wasted Cost',
+    hintVagueCount: '{total} total user messages',
+    hintVagueRatio: '{count} / {total}',
+    hintWastedTokens: 'consumed by vague prompts',
+    hintWastedCost: 'optimization opportunity',
+    tblRank: '#', tblPrompt: 'Prompt', tblPromptTokens: 'Tokens', tblPromptCost: 'Cost', tblPromptModel: 'Model', tblPromptSource: 'Source',
+    insightAction: 'Suggestion', insightActionEn: 'Suggestion',
+    lblInsightHigh: 'High', lblInsightMedium: 'Medium', lblInsightLow: 'Low', lblInsightInfo: 'Info',
   }
 };
 function t(key, params) {
@@ -184,7 +210,7 @@ function toggleLang() {
   _numPrevValues = new WeakMap();
   isFirstRender = false;
   /* Force re-create DOM elements by clearing containers */
-  ['hero-chips','summary-side','source-cards','cost-cards'].forEach(id => {
+  ['hero-chips','hero-stats','source-bar','summary-side','source-cards','cost-cards','vague-stats','vague-list','expensive-table','insight-cards'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '';
   });

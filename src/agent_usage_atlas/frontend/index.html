@@ -30,6 +30,8 @@ __CSS__
       <h1 id="hero-title"></h1>
       <p class="hero-copy" id="hero-copy"></p>
       <div class="chips" id="hero-chips"></div>
+      <div class="hero-stats" id="hero-stats"></div>
+      <div class="source-bar-wrap" id="source-bar"></div>
     </article>
     <aside class="side" id="summary-side"></aside>
   </section>
@@ -148,6 +150,22 @@ __CSS__
   </section>
   </div>
 
+  <div class="divider" id="sec-insights"><i class="fa-solid fa-lightbulb"></i> <span data-i18n="divInsights"></span><i class="fa-solid fa-chevron-down chevron"></i></div>
+  <div class="section-wrap" data-section="sec-insights">
+  <section class="g g4" id="vague-stats"></section>
+  <section class="g g-wide mt">
+    <article class="p">
+      <div class="sh"><h2 data-i18n="chartVagueList"></h2><span data-i18n="chartVagueListSub"></span></div>
+      <div class="vague-list" id="vague-list"></div>
+    </article>
+    <article class="p">
+      <div class="sh"><h2 data-i18n="chartExpensive"></h2><span data-i18n="chartExpensiveSub"></span></div>
+      <div class="table-wrap"><table id="expensive-table"></table></div>
+    </article>
+  </section>
+  <section class="mt" id="insight-cards"></section>
+  </div>
+
   <div class="divider" id="sec-leaderboard"><i class="fa-solid fa-list-ol"></i> <span data-i18n="divLeaderboard"></span><i class="fa-solid fa-chevron-down chevron"></i></div>
   <div class="section-wrap" data-section="sec-leaderboard">
   <section>
@@ -167,6 +185,7 @@ __CSS__
     <a href="#sec-projects"><i class="fa-solid fa-diagram-project"></i><span>Projects</span></a>
     <a href="#sec-session"><i class="fa-solid fa-magnifying-glass-chart"></i><span>Session</span></a>
     <a href="#sec-extended"><i class="fa-solid fa-gauge-high"></i><span>Extended</span></a>
+    <a href="#sec-insights"><i class="fa-solid fa-lightbulb"></i><span>Insights</span></a>
     <a href="#sec-leaderboard"><i class="fa-solid fa-list-ol"></i><span>Leaderboard</span></a>
   </nav>
   <button class="back-top" id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="fa-solid fa-arrow-up"></i></button>

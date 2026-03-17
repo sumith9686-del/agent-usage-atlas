@@ -56,6 +56,7 @@ def build_dashboard_payload(
         cursor_codegen=result.code_gen,
         cursor_commits=result.scored_commits,
         claude_stats_cache=claude_stats_cache,
+        user_messages=result.user_messages,
     )
     dashboard["_meta"] = {
         "generated_at": now_local.isoformat(timespec="seconds"),

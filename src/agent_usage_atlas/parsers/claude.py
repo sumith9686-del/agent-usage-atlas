@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..models import ParseResult, SessionMeta, ToolCall, TurnDuration, UsageEvent
+from ..models import ParseResult, SessionMeta, ToolCall, TurnDuration, UsageEvent, UserMessage
 from ._base import _read_json_lines, _si, _ts
 
 CLAUDE_HOME = Path.home() / ".claude"
@@ -42,6 +42,7 @@ def parse(start_utc, now_utc) -> ParseResult:
     calls = []
     metas, meta_seen = [], set()
     turn_durations = []
+    user_messages = []
 
     for path in CLAUDE_ROOT.rglob("*.jsonl"):
         if path.name == "sessions-index.json":
@@ -68,6 +69,25 @@ def parse(start_utc, now_utc) -> ParseResult:
                     br = obj.get("gitBranch")
                     proj = Path(cwd).name if cwd and "/" in str(cwd) else str(cwd).rsplit("-", 1)[-1] if cwd else None
                     metas.append(SessionMeta("Claude", sid, cwd, proj, br))
+                # Extract user message text
+                ts = _ts(obj.get("timestamp"))
+                if ts and start_utc <= ts <= now_utc:
+                    content = (obj.get("message") or {}).get("content")
+                    text_parts = []
+                    if isinstance(content, str):
+                        text_parts.append(content)
+                    elif isinstance(content, list):
+                        for blk in content:
+                            if isinstance(blk, dict) and blk.get("type") == "text":
+                                text_parts.append(blk.get("text", ""))
+                            elif isinstance(blk, str):
+                                text_parts.append(blk)
+                    full_text = " ".join(text_parts).strip()
+                    if full_text:
+                        user_messages.append(UserMessage(
+                            "Claude", ts, sid,
+                            full_text[:200], len(full_text),
+                        ))
 
             if obj_type == "system" and obj.get("subtype") == "turn_duration":
                 dur = obj.get("durationMs")
@@ -140,6 +160,7 @@ def parse(start_utc, now_utc) -> ParseResult:
         tool_calls=calls,
         session_metas=metas,
         turn_durations=turn_durations,
+        user_messages=user_messages,
     )
 
 

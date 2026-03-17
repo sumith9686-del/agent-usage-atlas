@@ -2,8 +2,18 @@
 
 **English** | [中文](README_CN.md)
 
+[![PyPI version](https://img.shields.io/pypi/v/agent-usage-atlas)](https://pypi.org/project/agent-usage-atlas/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/agent-usage-atlas)](https://pypi.org/project/agent-usage-atlas/)
+[![Python](https://img.shields.io/pypi/pyversions/agent-usage-atlas)](https://pypi.org/project/agent-usage-atlas/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > Turn your local AI coding agent logs into a rich, interactive analytics dashboard — zero dependencies, fully offline, one command.
 
+<p align="center">
+  <a href="https://heggria.github.io/agent-usage-atlas/demo/"><strong>Live Demo →</strong></a>
+</p>
+
+<!-- TODO: replace with GIF once recorded with vhs -->
 ![Hero Overview](docs/screenshots/en/hero-overview.png)
 
 ## Why Agent Usage Atlas?
