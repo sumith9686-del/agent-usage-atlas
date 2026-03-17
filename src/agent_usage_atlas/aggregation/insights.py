@@ -51,7 +51,10 @@ def _marathon_sessions(ctx, _pd) -> dict | None:
         "title": f"发现 {len(long_sessions)} 个马拉松会话",
         "title_en": f"{len(long_sessions)} marathon session(s) detected",
         "body": f"最长会话持续 {hours} 小时。长时间连续使用可能导致上下文膨胀和效率下降。",
-        "body_en": f"Longest session lasted {hours}h. Extended sessions may cause context bloat and reduced efficiency.",
+        "body_en": (
+            f"Longest session lasted {hours}h. Extended sessions may cause "
+            "context bloat and reduced efficiency."
+        ),
         "action": "考虑将大任务拆分为多个短会话，每个聚焦一个目标。",
         "action_en": "Consider splitting large tasks into shorter, focused sessions.",
     }
