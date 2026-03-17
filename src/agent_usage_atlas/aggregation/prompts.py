@@ -73,7 +73,7 @@ def compute(ctx) -> dict:
         session_events[(ev.source, ev.session_id)].append(ev)
 
     # Vague detection
-    vague_counter = Counter()
+    vague_counter: Counter[str] = Counter()
     vague_count = 0
     total_user_messages = len(msgs)
 
