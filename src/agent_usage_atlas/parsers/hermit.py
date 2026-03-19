@@ -236,10 +236,23 @@ def _parse_receipts(
     now_utc: datetime,
     out: list[ToolCall],
 ) -> None:
+    # Check if result_code column exists (schema varies across versions)
+    has_result_code = False
+    try:
+        cols = {
+            info[1] for info in conn.execute("PRAGMA table_info(receipts)").fetchall()
+        }
+        has_result_code = "result_code" in cols
+    except Exception:
+        pass
+
+    select_cols = "r.task_id, r.action_type, r.created_at, t.conversation_id"
+    if has_result_code:
+        select_cols = "r.task_id, r.action_type, r.result_code, r.created_at, t.conversation_id"
+
     try:
         rows = conn.execute(
-            "SELECT r.task_id, r.action_type, r.result_code, r.created_at, "
-            "t.conversation_id "
+            f"SELECT {select_cols} "
             "FROM receipts r LEFT JOIN tasks t ON r.task_id = t.task_id "
             "WHERE r.created_at IS NOT NULL"
         ).fetchall()
@@ -248,13 +261,18 @@ def _parse_receipts(
         return
 
     for r in rows:
-        ts = _epoch_ts(r["created_at"])
+        if has_result_code:
+            ts = _epoch_ts(r["created_at"])
+            action = r["action_type"] or "unknown"
+            rc = r["result_code"]
+        else:
+            ts = _epoch_ts(r["created_at"])
+            action = r["action_type"] or "unknown"
+            rc = None
         if ts is None or ts < start_utc or ts > now_utc:
             continue
 
-        action = r["action_type"] or "unknown"
         tool_name = _ACTION_MAP.get(action, action)
-        rc = r["result_code"]
         exit_code = 0 if rc == "succeeded" else (1 if rc and rc != "succeeded" else None)
 
         out.append(

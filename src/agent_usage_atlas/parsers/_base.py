@@ -7,7 +7,7 @@ import os
 import threading
 import time
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 _FILE_CACHE_LOCK = threading.Lock()
@@ -139,7 +139,23 @@ def result_cache_files(parser_name: str) -> list[Path] | None:
 
 
 def _ts(raw):
-    return datetime.fromisoformat(str(raw).replace("Z", "+00:00")) if raw else None
+    if not raw:
+        return None
+    s = str(raw)
+    # Unix timestamp (integer or float, typically 10+ digits)
+    if s.replace(".", "", 1).replace("-", "", 1).isdigit() and len(s.split(".")[0].lstrip("-")) >= 10:
+        try:
+            return datetime.fromtimestamp(float(s), tz=timezone.utc)
+        except (ValueError, OSError, OverflowError):
+            pass
+    # Git-style date: "Thu Feb 12 15:44:45 2026 +0000"
+    if len(s) > 20 and s[0].isalpha():
+        try:
+            from email.utils import parsedate_to_datetime
+            return parsedate_to_datetime(s)
+        except Exception:
+            pass
+    return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
 
 def _si(v):
