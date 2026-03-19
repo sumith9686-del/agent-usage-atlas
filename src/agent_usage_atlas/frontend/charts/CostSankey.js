@@ -12,7 +12,7 @@ function renderCostSankey(){
       nodeWidth: 18,
       nodeGap: 14,
       lineStyle: {color: 'gradient', curveness: .45, opacity: .3},
-      label: {color: '#fff', fontSize: 11},
+      label: {color: _LINE_DOT(), fontSize: 11},
       data: data.trend_analysis.cost_sankey.nodes.map(node => ({
         name: node.name,
         itemStyle: {color: C[node.name] || ['Input Cost','Cache Read','Cache Write','Output','Reasoning'].includes(node.name)

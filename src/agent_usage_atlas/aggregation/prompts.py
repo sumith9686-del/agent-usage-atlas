@@ -62,10 +62,8 @@ def _is_vague(text: str, char_count: int) -> bool:
 def compute(ctx) -> dict:
     """Compute vague prompt stats and expensive prompt ranking."""
     msgs = ctx.user_messages
-    events = sorted(
-        (e for e in _iter_events(ctx) if e.total > 0),
-        key=lambda e: e.timestamp,
-    )
+    # Events are already sorted by timestamp in _context.py build_context
+    events = [e for e in _iter_events(ctx) if e.total > 0]
 
     # Build session → sorted events index for pairing
     session_events = defaultdict(list)

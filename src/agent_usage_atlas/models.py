@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import lru_cache
+from pathlib import Path
 from typing import NamedTuple
 
 
@@ -16,59 +19,82 @@ class PricingTier(NamedTuple):
     reasoning: float
 
 
-# Model pricing (USD / 1M tokens)
+# ── Hardcoded fallback pricing (used if JSON load fails) ──
 _S = PricingTier(3, 0.3, 3.75, 15, 15)
 _O = PricingTier(15, 1.5, 18.75, 75, 75)
 _H = PricingTier(0.8, 0.08, 1, 4, 4)
 _OH = PricingTier(5, 0.5, 6.25, 25, 25)
 _G5 = PricingTier(2.5, 0.25, 0, 15, 15)
 _G5M = PricingTier(1.1, 0.275, 0, 4.4, 4.4)
-_MM = PricingTier(0.29, 0.029, 0.36, 1.16, 1.16)  # MiniMax CNY÷7.25
+_MM = PricingTier(0.29, 0.029, 0.36, 1.16, 1.16)
 
-_P = {
-    # MiniMax family
+_FALLBACK_P = {
     "MiniMax-M2": _MM,
-    # OpenAI GPT-5 family
-    "gpt-5.4": _G5,
-    "gpt-5.3-codex-spark": _G5M,
-    "gpt-5.3-codex": _G5,
-    "gpt-5.2-codex": _G5,
-    "gpt-5.2": _G5,
-    "gpt-5.1-codex-max": _G5,
-    "gpt-5.1-codex-mini": _G5M,
-    "gpt-5.1-codex": _G5,
-    "gpt-5.1": _G5,
-    "gpt-5-codex-mini": _G5M,
-    "gpt-5-codex": _G5,
-    "gpt-5": _G5,
-    # Anthropic Claude family
-    "claude-opus-4-6": _OH,
-    "claude-sonnet-4-6": _S,
-    "claude-opus-4-5": _OH,
-    "claude-sonnet-4-5": _S,
-    "claude-opus-4-1": _O,
-    "claude-opus-4-0": _O,
-    "claude-opus-4-2": _O,
-    "claude-sonnet-4-0": _S,
-    "claude-sonnet-4-2": _S,
+    "gpt-5.4": _G5, "gpt-5.3-codex-spark": _G5M, "gpt-5.3-codex": _G5,
+    "gpt-5.2-codex": _G5, "gpt-5.2": _G5, "gpt-5.1-codex-max": _G5,
+    "gpt-5.1-codex-mini": _G5M, "gpt-5.1-codex": _G5, "gpt-5.1": _G5,
+    "gpt-5-codex-mini": _G5M, "gpt-5-codex": _G5, "gpt-5": _G5,
+    "claude-opus-4-6": _OH, "claude-sonnet-4-6": _S,
+    "claude-opus-4-5": _OH, "claude-sonnet-4-5": _S,
+    "claude-opus-4-1": _O, "claude-opus-4-0": _O, "claude-opus-4-2": _O,
+    "claude-sonnet-4-0": _S, "claude-sonnet-4-2": _S,
     "claude-haiku-4-5": PricingTier(1, 0.1, 1.25, 5, 5),
     "claude-haiku-3-5": _H,
     "claude-3-haiku": PricingTier(0.25, 0.03, 0.3, 1.25, 1.25),
-    "claude-3-5-sonnet": _S,
-    "claude-3-5-haiku": _H,
-    "claude-3-opus": _O,
+    "claude-3-5-sonnet": _S, "claude-3-5-haiku": _H, "claude-3-opus": _O,
 }
+
+
+def _load_pricing_json(path: Path) -> dict[str, PricingTier]:
+    """Load a pricing JSON file, returning a dict of model -> PricingTier."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    result = {}
+    for key, value in raw.items():
+        if key.startswith("_"):
+            continue  # skip metadata keys like _comment
+        if isinstance(value, list) and len(value) == 5:
+            result[key] = PricingTier(*value)
+    return result
+
+
+def _build_pricing() -> dict[str, PricingTier]:
+    """Build the pricing dict: bundled JSON -> user override -> fallback."""
+    # 1. Try loading bundled pricing.json
+    bundled_path = Path(__file__).resolve().parent / "data" / "pricing.json"
+    try:
+        pricing = _load_pricing_json(bundled_path)
+    except Exception as exc:
+        warnings.warn(f"Failed to load bundled pricing.json, using fallback: {exc}")
+        pricing = dict(_FALLBACK_P)
+        return pricing
+
+    # 2. Merge user override (takes precedence)
+    user_path = Path.home() / ".config" / "agent-usage-atlas" / "pricing.json"
+    if user_path.is_file():
+        try:
+            user_pricing = _load_pricing_json(user_path)
+            pricing.update(user_pricing)
+        except Exception as exc:
+            warnings.warn(f"Failed to load user pricing override: {exc}")
+
+    return pricing
+
+
+_P = _build_pricing()
+
+# Pre-sorted pricing keys by length descending for longest-prefix-first matching
+_P_SORTED = sorted(_P.items(), key=lambda kv: len(kv[0]), reverse=True)
 
 
 @lru_cache(maxsize=128)
 def _gp(model):
     ml = model.lower()
-    # Exact prefix match first (longest match wins due to dict order)
-    for k, v in _P.items():
+    # Exact prefix match first (longest match wins)
+    for k, v in _P_SORTED:
         if ml.startswith(k.lower()):
             return v
-    # Fallback: substring match
-    for k, v in _P.items():
+    # Fallback: substring match (longest match wins)
+    for k, v in _P_SORTED:
         if k.lower() in ml:
             return v
     return _S
@@ -87,29 +113,17 @@ class UsageEvent:
     reasoning: int = 0
     activity_messages: int = 0
 
-    @property
-    def total(self):
-        return self.uncached_input + self.cache_read + self.cache_write + self.output + self.reasoning
-
-    @property
-    def _pricing(self):
-        return _gp(self.model)
-
-    @property
-    def cost(self):
-        p = self._pricing
-        return (
+    def __post_init__(self):
+        p = _gp(self.model)
+        self._total = self.uncached_input + self.cache_read + self.cache_write + self.output + self.reasoning
+        self._cost = (
             self.uncached_input * p[0]
             + self.cache_read * p[1]
             + self.cache_write * p[2]
             + self.output * p[3]
             + self.reasoning * p[4]
         ) / 1e6
-
-    @property
-    def cost_breakdown(self):
-        p = self._pricing
-        return {
+        self._cost_bd = {
             "input": self.uncached_input * p[0] / 1e6,
             "cache_read": self.cache_read * p[1] / 1e6,
             "cache_write": self.cache_write * p[2] / 1e6,
@@ -117,6 +131,18 @@ class UsageEvent:
             "reasoning": self.reasoning * p[4] / 1e6,
             "cache_read_full": self.cache_read * p[0] / 1e6,
         }
+
+    @property
+    def total(self):
+        return self._total
+
+    @property
+    def cost(self):
+        return self._cost
+
+    @property
+    def cost_breakdown(self):
+        return self._cost_bd
 
 
 @dataclass

@@ -18,6 +18,8 @@ function _buildParams(rangeKey) {
   const p = new URLSearchParams();
   if (rangeKey === 'today') {
     p.set('since', _dateFmt(new Date()));
+  } else if (rangeKey === '3day') {
+    p.set('days', '3');
   } else if (rangeKey === 'week') {
     p.set('days', '7');
   } else {
@@ -45,6 +47,15 @@ let streamSource = null;
 let isStreamConnected = false;
 const charts = [];
 const chartCache = {};
+
+/* ── Date drill-down filter (cost family) ── */
+let selectedDate = null;
+const _dateFilterListeners = [];
+function onDateFilter(fn) { _dateFilterListeners.push(fn); }
+function setSelectedDate(date) {
+  selectedDate = (date === selectedDate) ? null : date;
+  _dateFilterListeners.forEach(fn => fn(selectedDate));
+}
 
 function setDashboard(nextData){
   if (!nextData || typeof nextData !== 'object') {

@@ -15,7 +15,7 @@ function renderDailyTokenChart(){
       {name: 'Cache Read', type: 'bar', stack: 'tokens', itemStyle: {color: C.cacheRead}, data: data.days.map(day => day.cache_read)},
       {name: 'Cache Write', type: 'bar', stack: 'tokens', itemStyle: {color: C.cacheWrite}, data: data.days.map(day => day.cache_write)},
       {name: 'Output + Reason', type: 'bar', stack: 'tokens', itemStyle: {color: C.output, borderRadius: [6, 6, 0, 0]}, data: data.days.map(day => day.output + day.reasoning)},
-      {name: t('seriesCumulative'), type: 'line', yAxisIndex: 1, smooth: true, symbolSize: 6, lineStyle: {width: 3, color: 'rgba(255,255,255,.76)'}, itemStyle: {color: '#fff'}, areaStyle: {color: 'rgba(255,255,255,.05)'}, data: data.days.map(day => day.cumulative_tokens)}
+      {name: t('seriesCumulative'), type: 'line', yAxisIndex: 1, smooth: true, symbolSize: 6, lineStyle: {width: 3, color: _LINE_ACCENT()}, itemStyle: {color: _LINE_DOT()}, areaStyle: {color: _isLight() ? 'rgba(0,0,0,.04)' : 'rgba(255,255,255,.05)'}, data: data.days.map(day => day.cumulative_tokens)}
     ]
   });
 }

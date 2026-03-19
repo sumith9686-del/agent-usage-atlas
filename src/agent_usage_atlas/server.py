@@ -13,7 +13,9 @@ import signal
 import sys
 import threading
 import time
+import traceback
 import webbrowser
+from collections import OrderedDict
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -21,10 +23,17 @@ from urllib.parse import parse_qs, urlparse
 
 from .builder import build_html
 from .cli import build_dashboard_payload
-from .parsers import CLAUDE_ROOT, CODEX_ROOTS, CURSOR_ROOT
+from .parsers import CLAUDE_ROOT, CODEX_ROOTS, CURSOR_ROOT, HERMIT_ROOTS
 
-_PAYLOAD_CACHE: dict[tuple[int, str | None], tuple[dict, str, tuple[int, int, int]]] = {}
+_PAYLOAD_CACHE: OrderedDict[tuple[int, str | None], tuple[dict, str, tuple[int, int, int]]] = OrderedDict()
 _PAYLOAD_LOCK = threading.Lock()
+_PAYLOAD_CACHE_MAX = 8
+_BUILD_LOCK = threading.Lock()  # serialize parse_all to avoid _ACTIVE_RANGE race
+
+# SSE connection limiting
+_SSE_CONNECTION_COUNT = 0
+_SSE_CONNECTION_LOCK = threading.Lock()
+_SSE_MAX_CONNECTIONS = 10
 
 
 def _parse_int(value: str | None, default: int, minimum: int = 1, maximum: int = 3600) -> int:
@@ -73,6 +82,12 @@ def _iter_payload_files():
             if "agent-transcripts" not in str(path):
                 continue
             yield path
+    for db_path in HERMIT_ROOTS:
+        if db_path.exists():
+            yield db_path
+            wal = db_path.parent / (db_path.name + "-wal")
+            if wal.exists():
+                yield wal
 
 
 _SIG_FILE_LIST: list[Path] = []
@@ -108,14 +123,64 @@ def _cached_payload(days: int, since: str | None) -> tuple[dict, str]:
         if entry is not None:
             payload, etag, payload_sig = entry
             if payload_sig == signature:
+                _PAYLOAD_CACHE.move_to_end(key)
                 return payload, etag
 
-    payload = _build_payload(days=days, since=since)
-    _, etag = _json_body(payload)
-    cache_entry = (payload, etag, signature)
-    with _PAYLOAD_LOCK:
-        _PAYLOAD_CACHE[key] = cache_entry
-    return payload, etag
+    # Serialize builds so concurrent threads don't stomp on the global
+    # _ACTIVE_RANGE inside parse_all, which causes inconsistent event counts.
+    with _BUILD_LOCK:
+        # Re-check cache — another thread may have just built it.
+        signature = _payload_signature()
+        with _PAYLOAD_LOCK:
+            entry = _PAYLOAD_CACHE.get(key)
+            if entry is not None:
+                payload, etag, payload_sig = entry
+                if payload_sig == signature:
+                    _PAYLOAD_CACHE.move_to_end(key)
+                    return payload, etag
+
+        payload = _build_payload(days=days, since=since)
+        _, etag = _json_body(payload)
+        # Re-compute signature AFTER build to capture any file changes during build
+        post_build_sig = _payload_signature()
+        cache_entry = (payload, etag, post_build_sig)
+        with _PAYLOAD_LOCK:
+            _PAYLOAD_CACHE[key] = cache_entry
+            _PAYLOAD_CACHE.move_to_end(key)
+            while len(_PAYLOAD_CACHE) > _PAYLOAD_CACHE_MAX:
+                _PAYLOAD_CACHE.popitem(last=False)
+        return payload, etag
+
+
+# ── Background pre-computation thread ──
+
+_BG_THREAD: threading.Thread | None = None
+_BG_STOP = threading.Event()
+
+
+def _bg_precompute(days: int, since: str | None, interval: int) -> None:
+    """Daemon thread that periodically refreshes the payload cache."""
+    while not _BG_STOP.is_set():
+        try:
+            _cached_payload(days=days, since=since)
+        except Exception as exc:
+            traceback.print_exc(file=sys.stderr)
+            print(f"[payload-precompute] Pipeline error: {exc}", file=sys.stderr)
+        _BG_STOP.wait(timeout=max(1, interval - 1))
+
+
+def _start_bg_precompute(days: int, since: str | None, interval: int) -> None:
+    global _BG_THREAD
+    if _BG_THREAD is not None:
+        return
+    _BG_STOP.clear()
+    _BG_THREAD = threading.Thread(
+        target=_bg_precompute,
+        args=(days, since, interval),
+        daemon=True,
+        name="payload-precompute",
+    )
+    _BG_THREAD.start()
 
 
 def _log(address: str, fmt: str, *args: object) -> None:
@@ -169,7 +234,6 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Cache-Control", cache_control)
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
 
     def _write_json(self, payload: object, status: int = 200) -> None:
@@ -207,6 +271,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self._write_json(payload)
 
     def _write_stream(self, query: str) -> None:
+        global _SSE_CONNECTION_COUNT
+
         parsed = parse_qs(query)
         interval = _parse_int(parsed.get("interval", [None])[0], default=self.default_interval, minimum=2, maximum=60)
         days, since = _parse_range(query, default_days=self.default_days)
@@ -221,25 +287,49 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 return
         since = since or self.default_since
 
-        self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection", "keep-alive")
-        self.end_headers()
-        self.wfile.write(b": connected\n\n")
-        self.wfile.flush()
+        # Enforce SSE connection limit
+        with _SSE_CONNECTION_LOCK:
+            if _SSE_CONNECTION_COUNT >= _SSE_MAX_CONNECTIONS:
+                self.send_response(503)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b"Too many SSE connections")
+                return
+            _SSE_CONNECTION_COUNT += 1
 
-        known_etag = ""
         try:
-            while True:
-                payload, etag = _cached_payload(days=days, since=since)
-                if etag != known_etag:
-                    known_etag = etag
-                    self.wfile.write(_sse_encode(payload))
-                    self.wfile.flush()
-                time.sleep(interval)
-        except (BrokenPipeError, ConnectionResetError):
-            return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+            self.wfile.write(b": connected\n\n")
+            self.wfile.flush()
+
+            known_etag = ""
+            heartbeat_interval = 15.0  # seconds
+            last_write = time.monotonic()
+            try:
+                while True:
+                    payload, etag = _cached_payload(days=days, since=since)
+                    if etag != known_etag:
+                        known_etag = etag
+                        self.wfile.write(_sse_encode(payload))
+                        self.wfile.flush()
+                        last_write = time.monotonic()
+                    else:
+                        # Send heartbeat if idle too long
+                        now = time.monotonic()
+                        if (now - last_write) >= heartbeat_interval:
+                            self.wfile.write(b": heartbeat\n\n")
+                            self.wfile.flush()
+                            last_write = now
+                    time.sleep(interval)
+            except (BrokenPipeError, ConnectionResetError):
+                return
+        finally:
+            with _SSE_CONNECTION_LOCK:
+                _SSE_CONNECTION_COUNT -= 1
 
 
 _LOCK_FILE = Path.home() / ".cache" / "agent-usage-atlas" / "server.lock"
@@ -358,6 +448,7 @@ def run_server(
     DashboardHandler.default_interval = interval
 
     _cached_payload(days=days, since=since)
+    _start_bg_precompute(days=days, since=since, interval=interval)
 
     server = _ReuseAddrServer((host, port), DashboardHandler)
     url = f"http://{host}:{port}"

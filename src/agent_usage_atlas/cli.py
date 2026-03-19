@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,11 @@ from typing import Any
 from .aggregation import aggregate
 from .models import fmt_int, fmt_usd
 from .parsers import parse_all
+
+# ── Dashboard-level cache (skip aggregation when no data changed) ─────
+_dashboard_cache: dict[str, Any] | None = None
+_dashboard_cache_key: tuple | None = None
+_dashboard_cache_lock = threading.Lock()
 
 # ── Core payload builder (shared by all commands) ──────────────────────
 
@@ -23,6 +29,8 @@ def build_dashboard_payload(
     now_local: datetime | None = None,
     now_utc: datetime | None = None,
 ) -> dict[str, Any]:
+    global _dashboard_cache, _dashboard_cache_key
+
     local_tz = now_local.tzinfo if now_local and now_local.tzinfo else datetime.now(timezone.utc).astimezone().tzinfo
     now_local = now_local or datetime.now(local_tz)
     if now_local.tzinfo is None:
@@ -42,7 +50,15 @@ def build_dashboard_payload(
         )
     start_utc = start_local.astimezone(timezone.utc)
 
-    result, claude_stats_cache = parse_all(start_utc, now_utc, local_tz=local_tz)
+    cache_key = (days, since, str(start_utc))
+    result, claude_stats_cache, changed = parse_all(start_utc, now_utc, local_tz=local_tz)
+
+    with _dashboard_cache_lock:
+        if not changed and _dashboard_cache is not None and _dashboard_cache_key == cache_key:
+            # Return a shallow copy so callers don't mutate the cached object
+            snapshot = {**_dashboard_cache}
+            snapshot["_meta"] = {**snapshot["_meta"], "generated_at": now_local.isoformat(timespec="seconds")}
+            return snapshot
 
     dashboard = aggregate(
         result.events,
@@ -64,6 +80,9 @@ def build_dashboard_payload(
         "days": days,
         "local_timezone": str(local_tz),
     }
+    with _dashboard_cache_lock:
+        _dashboard_cache = dashboard
+        _dashboard_cache_key = cache_key
     return dashboard
 
 

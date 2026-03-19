@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import warnings
 from collections import defaultdict
 from pathlib import Path
 
 from ..models import ParseResult, SessionMeta, TaskEvent, ToolCall, TurnDuration, UsageEvent, UserMessage
-from ._base import _read_json_lines, _si, _ts
+from ._base import _read_json_lines, _si, _ts, result_cache_files, result_cache_get, result_cache_set
 
 CODEX_ROOTS = [Path.home() / ".codex/archived_sessions", Path.home() / ".codex/sessions"]
 CODEX_HOME = Path.home() / ".codex"
@@ -19,6 +20,21 @@ _ECR = re.compile(r"Process exited with code (\d+)")
 
 def parse(start_utc, now_utc) -> ParseResult:
     """Single-pass Codex parser."""
+    # Collect all JSONL + DB files for cache signature
+    watch = result_cache_files("codex")
+    if watch is None:
+        watch = []
+        for root in CODEX_ROOTS:
+            if root.exists():
+                watch.extend(sorted(root.rglob("*.jsonl")))
+        state_db = CODEX_HOME / "state_5.sqlite"
+        for db in [CODEX_HOME / "codex.db", state_db]:
+            if db.exists():
+                watch.append(db)
+    cached = result_cache_get("codex", watch)
+    if cached is not None:
+        return cached
+
     ses = defaultdict(list)
     calls = []
     metas, meta_seen = [], set()
@@ -31,12 +47,13 @@ def parse(start_utc, now_utc) -> ParseResult:
         db = root.parent / "codex.db"
         if db.exists():
             try:
-                for r in sqlite3.connect(str(db)).execute("SELECT id,cwd,git_branch FROM threads").fetchall():
-                    sid, cwd, br = str(r[0]), r[1], r[2]
-                    metas.append(SessionMeta("Codex", sid, cwd, Path(cwd).name if cwd else None, br))
-                    meta_seen.add(sid)
-            except Exception:
-                pass
+                with sqlite3.connect(str(db)) as conn:
+                    for r in conn.execute("SELECT id,cwd,git_branch FROM threads").fetchall():
+                        sid, cwd, br = str(r[0]), r[1], r[2]
+                        metas.append(SessionMeta("Codex", sid, cwd, Path(cwd).name if cwd else None, br))
+                        meta_seen.add(sid)
+            except Exception as exc:
+                warnings.warn(f"Codex codex.db read failed: {exc}", stacklevel=2)
 
     state_db = CODEX_HOME / "state_5.sqlite"
     if state_db.exists():
@@ -59,11 +76,11 @@ def parse(start_utc, now_utc) -> ParseResult:
                             dur_ms = int((t1 - t0).total_seconds() * 1000)
                             if dur_ms > 0:
                                 turn_durations.append(TurnDuration("Codex", t0, sid, dur_ms))
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        warnings.warn(f"Codex turn duration parse failed for {sid}: {exc}", stacklevel=2)
             conn.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            warnings.warn(f"Codex state_5.sqlite read failed: {exc}", stacklevel=2)
 
     # Single iteration over each JSONL file
     for root in CODEX_ROOTS:
@@ -233,7 +250,7 @@ def parse(start_utc, now_utc) -> ParseResult:
             )
             bl = r
 
-    return ParseResult(
+    result = ParseResult(
         events=events,
         tool_calls=calls,
         session_metas=metas,
@@ -241,3 +258,5 @@ def parse(start_utc, now_utc) -> ParseResult:
         task_events=task_events,
         user_messages=user_messages,
     )
+    result_cache_set("codex", watch, result)
+    return result

@@ -165,6 +165,102 @@ def efficiency(ctx: AggContext) -> dict:
     }
 
 
+def _token_burn_interval(ctx: AggContext, interval_min: int) -> list[dict]:
+    """Bucket raw events into *interval_min*-minute bins with per-source breakdown."""
+    from collections import defaultdict
+
+    if not ctx._raw_events:
+        return []
+
+    bins: dict[str, dict] = defaultdict(
+        lambda: {"total": 0, "cost": 0.0, "sources": defaultdict(int)}
+    )
+
+    for event in ctx._raw_events:
+        local_ts = event.timestamp.astimezone(ctx.local_tz)
+        minute = (local_ts.minute // interval_min) * interval_min
+        bin_key = local_ts.replace(minute=minute, second=0, microsecond=0).strftime(
+            "%Y-%m-%d %H:%M"
+        )
+        total = event.total
+        bins[bin_key]["total"] += total
+        bins[bin_key]["cost"] += event.cost
+        bins[bin_key]["sources"][event.source] += total
+
+    sorted_keys = sorted(bins.keys())
+    result = []
+    for key in sorted_keys:
+        b = bins[key]
+        if b["total"] == 0:
+            continue
+        result.append(
+            {
+                "t": key,
+                "v": b["total"],
+                "c": round(b["cost"], 4),
+            }
+        )
+
+    return result
+
+
+def token_burn_5min(ctx: AggContext) -> list[dict]:
+    """Backward-compatible wrapper — returns 5-minute bins."""
+    return _token_burn_interval(ctx, 5)
+
+
+def token_burn_multi(ctx: AggContext) -> dict[str, list[dict]]:
+    """Return burn bins at multiple intervals: 1, 3, 5, 15, 30, 60 min.
+
+    Single-pass: compute 1-minute bins once, then roll up to coarser intervals.
+    """
+    from collections import defaultdict
+
+    intervals = [1, 3, 5, 15, 30, 60]
+    if not ctx._raw_events:
+        return {str(iv): [] for iv in intervals}
+
+    # Single pass: build 1-minute bins with pre-computed local timestamps
+    one_min_bins: dict[str, dict] = defaultdict(lambda: {"total": 0, "cost": 0.0})
+    for event in ctx._raw_events:
+        local_ts = event.timestamp.astimezone(ctx.local_tz)
+        bin_key = local_ts.strftime("%Y-%m-%d %H:%M")
+        one_min_bins[bin_key]["total"] += event.total
+        one_min_bins[bin_key]["cost"] += event.cost
+
+    # 1-min result
+    sorted_1min = sorted(one_min_bins.keys())
+    result_1 = [
+        {"t": k, "v": one_min_bins[k]["total"], "c": round(one_min_bins[k]["cost"], 4)}
+        for k in sorted_1min
+        if one_min_bins[k]["total"] > 0
+    ]
+
+    results: dict[str, list[dict]] = {"1": result_1}
+
+    # Roll up 1-min bins to coarser intervals by truncating minute
+    for iv in intervals:
+        if iv == 1:
+            continue
+        coarse: dict[str, dict] = defaultdict(lambda: {"total": 0, "cost": 0.0})
+        for key, b in one_min_bins.items():
+            # key is "YYYY-MM-DD HH:MM"; parse minute, truncate
+            hour_part = key[:14]  # "YYYY-MM-DD HH:"
+            minute = int(key[14:16])
+            truncated = (minute // iv) * iv
+            coarse_key = f"{hour_part}{truncated:02d}"
+            coarse[coarse_key]["total"] += b["total"]
+            coarse[coarse_key]["cost"] += b["cost"]
+        sorted_keys = sorted(coarse.keys())
+        results[str(iv)] = [
+            {"t": k, "v": coarse[k]["total"], "c": round(coarse[k]["cost"], 4)}
+            for k in sorted_keys
+            if coarse[k]["total"] > 0
+        ]
+
+    return results
+
+
 def _get_source_cards(ctx: AggContext) -> list[dict]:
     from .totals import _source_cards
 

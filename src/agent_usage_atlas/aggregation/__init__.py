@@ -51,6 +51,7 @@ def aggregate(
         "efficiency_metrics": trends.efficiency(ctx),
         "session_deep_dive": sessions.deep_dive(ctx),
         "trend_analysis": trends.compute(ctx),
+        "token_burn": trends.token_burn_multi(ctx),
         "story": story.compute(ctx),
         "extended": extended.compute(ctx, claude_stats_cache),
         "prompts": prompt_data,

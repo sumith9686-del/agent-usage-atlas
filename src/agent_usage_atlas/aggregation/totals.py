@@ -5,6 +5,7 @@ from __future__ import annotations
 from statistics import median
 
 from ._context import AggContext, _percent, _round_money, _source_rank
+from .sessions import _active_sessions
 
 
 def compute(ctx: AggContext) -> dict:
@@ -12,10 +13,10 @@ def compute(ctx: AggContext) -> dict:
     active_sessions = _active_sessions(ctx)
     ordered_days = ctx.ordered_days
 
-    grand_total = sum(d["total_tokens"] for d in ordered_days)
-    grand_cost = sum(d["cost"] for d in ordered_days)
-    grand_cache_read = sum(d["cache_read"] for d in ordered_days)
-    grand_cache_write = sum(d["cache_write"] for d in ordered_days)
+    grand_total = ctx.grand_total
+    grand_cost = ctx.grand_cost
+    grand_cache_read = ctx.grand_cache_read
+    grand_cache_write = ctx.grand_cache_write
     grand_output = sum(d["output"] for d in ordered_days)
     grand_reasoning = sum(d["reasoning"] for d in ordered_days)
     cache_ratio = _percent(grand_cache_read + grand_cache_write, grand_total)
@@ -26,8 +27,8 @@ def compute(ctx: AggContext) -> dict:
     session_minutes = [s["minutes"] for s in active_sessions if s["minutes"] > 0]
     session_costs = [s["cost"] for s in active_sessions if s["cost"] > 0]
 
-    peak_day = max(ordered_days, key=lambda i: i["total_tokens"], default=None)
-    cost_peak_day = max(ordered_days, key=lambda i: i["cost"], default=None)
+    peak_day = ctx.peak_day
+    cost_peak_day = ctx.cost_peak_day
     total_cache_read_full = sum(c["cost_cache_read_full"] for c in source_cards)
     total_cost_cache_read = sum(c["cost_cache_read"] for c in source_cards)
     cache_savings_usd = max(0.0, total_cache_read_full - total_cost_cache_read)
@@ -104,37 +105,6 @@ def _source_cards(ctx: AggContext) -> list[dict]:
             }
         )
     return cards
-
-
-def _active_sessions(ctx: AggContext) -> list[dict]:
-    sessions = []
-    for rollup in ctx.session_rollups.values():
-        first_local = rollup["first_local"]
-        last_local = rollup["last_local"]
-        minutes = 0.0
-        if first_local and last_local:
-            minutes = round((last_local - first_local).total_seconds() / 60, 1)
-        sessions.append(
-            {
-                "source": rollup["source"],
-                "session_id": rollup["session_id"],
-                "total": rollup["total_tokens"],
-                "uncached_input": rollup["uncached_input"],
-                "cache_read": rollup["cache_read"],
-                "cache_write": rollup["cache_write"],
-                "output": rollup["output"],
-                "reasoning": rollup["reasoning"],
-                "messages": rollup["messages"],
-                "tool_calls": rollup["tool_calls"],
-                "first_local": first_local.isoformat(timespec="minutes") if first_local else "-",
-                "last_local": last_local.isoformat(timespec="minutes") if last_local else "-",
-                "minutes": minutes,
-                "top_model": rollup["models"].most_common(1)[0][0] if rollup["models"] else "-",
-                "cost": _round_money(rollup["cost"]),
-            }
-        )
-    sessions.sort(key=lambda i: (i["total"], i["cost"], i["tool_calls"]), reverse=True)
-    return sessions
 
 
 def _combined_tool_counts(ctx: AggContext):

@@ -19,13 +19,13 @@ function renderTimeline(){
         yAxisIndex: 1,
         smooth: true,
         symbolSize: 6,
-        lineStyle: {width: 3, color: 'rgba(255,255,255,.76)'},
-        itemStyle: {color: '#fff'},
+        lineStyle: {width: 3, color: _LINE_ACCENT()},
+        itemStyle: {color: _LINE_DOT()},
         data: timeline.days.map(day => day.cumulative_tokens),
         markPoint: {
           symbol: 'pin',
           symbolSize: 38,
-          label: {color: '#fff', fontSize: 10, formatter: params => fmtShort(params.value)},
+          label: {color: '#fff', fontSize: 10, formatter: params => fmtShort(params.value)},  /* white on pin is ok */
           itemStyle: {color: C.Codex},
           data: timeline.peak_markers.map(marker => ({name: marker.label, coord: [marker.label, marker.cumulative_tokens], value: marker.total_tokens}))
         }

@@ -21,9 +21,10 @@ const I18N = {
     pillTokenTracked: 'token-tracked', pillActivityOnly: 'activity-only',
     subTrackedTokens: 'tracked tokens', subMessagesOnly: 'messages only',
     lblSessions: 'Sessions', lblCost: 'Cost', lblTopModel: 'Top Model', lblCache: 'Cache',
-    divSources: 'Sources', divCost: 'Cost Analysis', divTokens: 'Token Analytics', divActivity: 'Activity Patterns',
-    divTooling: 'Tooling & Commands', divProjects: 'Projects & Productivity', divSession: 'Session Deep Dive',
-    divExtended: 'Extended Analytics', divLeaderboard: 'Session Leaderboard',
+    divSources: 'Sources', divCostTokens: '花费与 Token', divActivitySessions: '活跃与会话',
+    divToolingProjects: '工具与项目', divLeaderboard: 'Session Leaderboard',
+    showMore: '展开更多', showLess: '收起',
+    navCostTokens: 'Cost', navActivity: 'Activity', navTooling: 'Tooling',
     chartDailyCost: '每日花费趋势', chartDailyCostSub: '按来源堆叠 + 累计花费线',
     chartCostBreakdown: '花费结构拆解', chartCostBreakdownSub: '钱花在哪种 Token 上',
     chartModelCost: '模型花费排行', chartModelCostSub: '哪些模型最烧钱',
@@ -32,8 +33,13 @@ const I18N = {
     chartCostCalendar: '花费日历', chartCostCalendarSub: '每天花了多少钱',
     chartStory: '剧情梗概', chartStorySub: '把数字翻译成人话',
     chartRose: '来源玫瑰图', chartRoseSub: '体量 + 气质一起看',
+    chartGauge: '效率仪表盘', chartGaugeSub: '缓存·推理·节省',
     chartDailyToken: '每日 Token 结构', chartDailyTokenSub: '堆叠柱 + 累计线',
     chartTokenSankey: 'Token 流向桑基图', chartTokenSankeySub: '从来源流到各类 token 桶',
+    chartTokenBurn: 'Token 燃烧曲线', chartTokenBurnSub: '多时间粒度查看 Token 消耗节奏',
+    seriesBurnRate: '消耗量', seriesBurnCost: '花费',
+    seriesBurnMA: 'MA', burnInterval1: '1 分钟', burnInterval3: '3 分钟', burnInterval5: '5 分钟',
+    burnInterval15: '15 分钟', burnInterval30: '30 分钟', burnInterval60: '1 小时',
     chartHeatmap: '活跃热区', chartHeatmapSub: '星期 × 小时，越深越忙',
     chartSourceRadar: '来源能力雷达', chartSourceRadarSub: '体量、缓存、输出、活跃度四维比较',
     chartTokenCalendar: 'Token 日历', chartTokenCalendarSub: '把高峰日钉在日历上',
@@ -62,7 +68,7 @@ const I18N = {
     chartAiContrib: 'AI 代码贡献度', chartAiContribSub: 'AI vs Human lines in commits',
     legendUncached: 'Uncached Input', legendCacheRead: 'Cache Read', legendCacheWrite: 'Cache Write', legendOutputReason: 'Output + Reason',
     footerText: '数据源：Codex <code>~/.codex</code> · Claude <code>~/.claude/projects</code> · Cursor transcript 仅统计活动消息<br>花费为基于公开 API 定价的估算值 · 图表渲染使用 <code>Apache ECharts</code>',
-    rangeFrom: '从 {since}', rangeDays: '{days} 天', rangeWeek: '近 7 天', rangeToday: '今日',
+    rangeFrom: '从 {since}', rangeDays: '{days} 天', rangeWeek: '近 7 天', range3Day: '近 3 天', rangeToday: '今日',
     badgeLive: 'Live', badgeOffline: 'Offline', badgeStatic: 'Static',
     toastRefreshFail: '刷新失败：{err}', toastRefreshEmpty: '刷新返回数据为空或格式异常',
     toastPollOk: '轮询连接正常', toastPollFallback: '当前环境不支持 EventSource，回退轮询更新。',
@@ -115,9 +121,10 @@ const I18N = {
     pillTokenTracked: 'token-tracked', pillActivityOnly: 'activity-only',
     subTrackedTokens: 'tracked tokens', subMessagesOnly: 'messages only',
     lblSessions: 'Sessions', lblCost: 'Cost', lblTopModel: 'Top Model', lblCache: 'Cache',
-    divSources: 'Sources', divCost: 'Cost Analysis', divTokens: 'Token Analytics', divActivity: 'Activity Patterns',
-    divTooling: 'Tooling & Commands', divProjects: 'Projects & Productivity', divSession: 'Session Deep Dive',
-    divExtended: 'Extended Analytics', divLeaderboard: 'Session Leaderboard',
+    divSources: 'Sources', divCostTokens: 'Cost & Tokens', divActivitySessions: 'Activity & Sessions',
+    divToolingProjects: 'Tooling & Projects', divLeaderboard: 'Session Leaderboard',
+    showMore: 'Show more', showLess: 'Show less',
+    navCostTokens: 'Cost', navActivity: 'Activity', navTooling: 'Tooling',
     chartDailyCost: 'Daily Cost Trend', chartDailyCostSub: 'stacked by source + cumulative line',
     chartCostBreakdown: 'Cost Breakdown', chartCostBreakdownSub: 'where the money goes by token type',
     chartModelCost: 'Model Cost Ranking', chartModelCostSub: 'which models cost the most',
@@ -126,8 +133,13 @@ const I18N = {
     chartCostCalendar: 'Cost Calendar', chartCostCalendarSub: 'daily spending heatmap',
     chartStory: 'Story Summary', chartStorySub: 'numbers translated to words',
     chartRose: 'Source Rose Chart', chartRoseSub: 'volume + character at a glance',
+    chartGauge: 'Efficiency Gauges', chartGaugeSub: 'cache · reasoning · savings',
     chartDailyToken: 'Daily Token Breakdown', chartDailyTokenSub: 'stacked bars + cumulative line',
     chartTokenSankey: 'Token Flow Sankey', chartTokenSankeySub: 'flow from source to token bucket',
+    chartTokenBurn: 'Token Burn Curve', chartTokenBurnSub: 'multi-interval token consumption rhythm',
+    seriesBurnRate: 'Burn Rate', seriesBurnCost: 'Cost',
+    seriesBurnMA: 'MA', burnInterval1: '1 min', burnInterval3: '3 min', burnInterval5: '5 min',
+    burnInterval15: '15 min', burnInterval30: '30 min', burnInterval60: '1 hour',
     chartHeatmap: 'Activity Heatmap', chartHeatmapSub: 'weekday × hour, darker = busier',
     chartSourceRadar: 'Source Radar', chartSourceRadarSub: 'volume, cache, output, sessions comparison',
     chartTokenCalendar: 'Token Calendar', chartTokenCalendarSub: 'pin peak days on the calendar',
@@ -156,7 +168,7 @@ const I18N = {
     chartAiContrib: 'AI Code Contribution', chartAiContribSub: 'AI vs Human lines in commits',
     legendUncached: 'Uncached Input', legendCacheRead: 'Cache Read', legendCacheWrite: 'Cache Write', legendOutputReason: 'Output + Reason',
     footerText: 'Data: Codex <code>~/.codex</code> · Claude <code>~/.claude/projects</code> · Cursor transcript counts activity messages only<br>Costs are estimates based on public API pricing · Charts rendered with <code>Apache ECharts</code>',
-    rangeFrom: 'From {since}', rangeDays: '{days} days', rangeWeek: 'Last 7 days', rangeToday: 'Today',
+    rangeFrom: 'From {since}', rangeDays: '{days} days', rangeWeek: 'Last 7 days', range3Day: 'Last 3 days', rangeToday: 'Today',
     badgeLive: 'Live', badgeOffline: 'Offline', badgeStatic: 'Static',
     toastRefreshFail: 'Refresh failed: {err}', toastRefreshEmpty: 'Refresh returned empty or malformed data',
     toastPollOk: 'Polling connected', toastPollFallback: 'EventSource unavailable, falling back to polling.',
@@ -219,7 +231,10 @@ function toggleLang() {
 }
 
 /* ── Theme toggle ── */
-let currentTheme = localStorage.getItem('atlas-theme') || 'dark';
+function _systemTheme() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+let currentTheme = localStorage.getItem('atlas-theme') || _systemTheme();
 function applyTheme() {
   if (currentTheme === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
@@ -237,3 +252,14 @@ function toggleTheme() {
   renderDashboard();
 }
 applyTheme();
+/* Follow system theme changes when user hasn't explicitly chosen */
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+    if (localStorage.getItem('atlas-theme')) return; /* user made explicit choice */
+    currentTheme = e.matches ? 'light' : 'dark';
+    applyTheme();
+    clearCharts();
+    isFirstRender = false;
+    if (data && data.totals) renderDashboard();
+  });
+}

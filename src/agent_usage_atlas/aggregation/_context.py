@@ -67,6 +67,14 @@ class AggContext:
     # Ordered days (filled in after single pass)
     ordered_days: list = field(default_factory=list)
 
+    # Precomputed grand totals (avoid redundant recomputation in downstream modules)
+    grand_total: int = 0
+    grand_cost: float = 0.0
+    grand_cache_read: int = 0
+    grand_cache_write: int = 0
+    peak_day: dict | None = None
+    cost_peak_day: dict | None = None
+
     # Extended data (passed through)
     task_events: list = field(default_factory=list)
     turn_durations: list = field(default_factory=list)
@@ -328,6 +336,14 @@ def build_context(
         )
         current_date += timedelta(days=1)
 
+    # Precompute grand totals for downstream modules
+    _grand_total = sum(d["total_tokens"] for d in ordered_days)
+    _grand_cost = sum(d["cost"] for d in ordered_days)
+    _grand_cache_read = sum(d["cache_read"] for d in ordered_days)
+    _grand_cache_write = sum(d["cache_write"] for d in ordered_days)
+    _peak_day = max(ordered_days, key=lambda i: i["total_tokens"], default=None)
+    _cost_peak_day = max(ordered_days, key=lambda i: i["cost"], default=None)
+
     return AggContext(
         start_local=start_local,
         now_local=now_local,
@@ -354,4 +370,10 @@ def build_context(
         claude_stats_cache=claude_stats_cache or {},
         user_messages=user_messages or [],
         _raw_events=events,
+        grand_total=_grand_total,
+        grand_cost=_grand_cost,
+        grand_cache_read=_grand_cache_read,
+        grand_cache_write=_grand_cache_write,
+        peak_day=_peak_day,
+        cost_peak_day=_cost_peak_day,
     )

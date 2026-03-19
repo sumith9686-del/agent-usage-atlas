@@ -16,20 +16,19 @@ const fmtUSD = v => {
   if (value >= 0.01) return '$' + value.toFixed(3);
   return '$' + value.toFixed(4);
 };
-const C = {
-  Codex: '#ff8a50',
-  Claude: '#ffd43b',
-  Cursor: '#748ffc',
-  uncached: '#f4b183',
-  cacheRead: '#51cf66',
-  cacheWrite: '#b197fc',
-  output: '#74c0fc',
-  reason: '#e599f7',
-  cost: '#ff6b6b'
-};
-const TX = 'rgba(255,255,255,.68)';
-const AX = 'rgba(255,255,255,.06)';
-const BG = 'rgba(255,255,255,.03)';
+const _C_DARK = {Codex:'#ff8a50',Claude:'#ffd43b',Cursor:'#748ffc',uncached:'#f4b183',cacheRead:'#51cf66',cacheWrite:'#b197fc',output:'#74c0fc',reason:'#e599f7',cost:'#ff6b6b'};
+const _C_LIGHT = {Codex:'#e06830',Claude:'#d4960a',Cursor:'#5a73d9',uncached:'#d4845a',cacheRead:'#2b8a3e',cacheWrite:'#8b6cc0',output:'#3a8fd4',reason:'#c06ad0',cost:'#dc3545'};
+const C = new Proxy(_C_DARK, {get(_, key) { return (_isLight() ? _C_LIGHT : _C_DARK)[key]; }});
+const _TX = () => _isLight() ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.68)';
+const _AX = () => _isLight() ? 'rgba(0,0,0,.09)' : 'rgba(255,255,255,.06)';
+const _BG = () => _isLight() ? 'rgba(0,0,0,.03)' : 'rgba(255,255,255,.03)';
+const _CARD_BG = () => _isLight() ? '#ffffff' : '#0d1016';
+const _LINE_ACCENT = () => _isLight() ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.75)';
+const _LINE_DOT = () => _isLight() ? '#1a1a2e' : '#fff';
+/* Backward-compatible: TX/AX/BG are now getters so existing chart code keeps working */
+Object.defineProperty(window, 'TX', {get: _TX});
+Object.defineProperty(window, 'AX', {get: _AX});
+Object.defineProperty(window, 'BG', {get: _BG});
 const getTokenSources = () => (data && data.source_cards ? data.source_cards.filter(card => card.token_capable) : []);
 
 /* ── Number transition animation ── */

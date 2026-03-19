@@ -11,7 +11,7 @@ function renderTokenSankey(){
       nodeWidth: 18,
       nodeGap: 14,
       lineStyle: {color: 'gradient', curveness: .45, opacity: .28},
-      label: {color: '#fff', fontSize: 11},
+      label: {color: _LINE_DOT(), fontSize: 11},
       data: data.trend_analysis.token_sankey.nodes.map(node => ({
         name: node.name,
         itemStyle: {color: C[node.name] || {'Uncached Input': C.uncached, 'Cache Read': C.cacheRead, 'Cache Write': C.cacheWrite, 'Output': C.output, 'Reasoning': C.reason}[node.name] || '#888'}

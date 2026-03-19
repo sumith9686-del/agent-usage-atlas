@@ -10,7 +10,7 @@ function renderSourceRadar(){
       splitNumber: 5,
       axisName: {color: TX, fontSize: 11},
       splitLine: {lineStyle: {color: AX}},
-      splitArea: {areaStyle: {color: ['rgba(255,255,255,.02)','rgba(255,255,255,.01)']}},
+      splitArea: {areaStyle: {color: _isLight() ? ['rgba(0,0,0,.02)','rgba(0,0,0,.01)'] : ['rgba(255,255,255,.02)','rgba(255,255,255,.01)']}},
       indicator: [
         {name: t('radarTotal'), max: Math.max(...rows.map(row => row.total_tokens), 1)},
         {name: t('radarCache'), max: Math.max(...rows.map(row => row.cache_total), 1)},

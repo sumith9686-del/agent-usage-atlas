@@ -10,7 +10,7 @@ function renderFileTypesChart(){
       radius: ['34%', '72%'],
       center: ['50%', '45%'],
       label: {color: TX},
-      itemStyle: {borderRadius: 8, borderColor: '#0d1016', borderWidth: 3},
+      itemStyle: {borderRadius: 8, borderColor: _CARD_BG(), borderWidth: 3},
       data: rows.map((row, index) => ({
         name: row.extension,
         value: row.count,

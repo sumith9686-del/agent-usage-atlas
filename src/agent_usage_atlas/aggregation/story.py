@@ -11,12 +11,11 @@ def compute(ctx: AggContext) -> dict:
     from .totals import _source_cards
 
     source_cards = _source_cards(ctx)
-    ordered_days = ctx.ordered_days
 
-    grand_total = sum(d["total_tokens"] for d in ordered_days)
-    grand_cost = sum(d["cost"] for d in ordered_days)
-    grand_cache_read = sum(d["cache_read"] for d in ordered_days)
-    grand_cache_write = sum(d["cache_write"] for d in ordered_days)
+    grand_total = ctx.grand_total
+    grand_cost = ctx.grand_cost
+    grand_cache_read = ctx.grand_cache_read
+    grand_cache_write = ctx.grand_cache_write
     cache_ratio = _percent(grand_cache_read + grand_cache_write, grand_total)
 
     total_cache_read_full = sum(c["cost_cache_read_full"] for c in source_cards)
@@ -28,12 +27,12 @@ def compute(ctx: AggContext) -> dict:
         combined.update(counts)
     _tool_total = sum(combined.values())
 
-    successful_commands = sum(d["command_successes"] for d in ordered_days)
+    successful_commands = sum(d["command_successes"] for d in ctx.ordered_days)
     total_commands = sum(ctx.command_counts.values())
     _cmd_rate = _percent(successful_commands, total_commands)
 
-    peak_day = max(ordered_days, key=lambda i: i["total_tokens"], default=None)
-    cost_peak_day = max(ordered_days, key=lambda i: i["cost"], default=None)
+    peak_day = ctx.peak_day
+    cost_peak_day = ctx.cost_peak_day
     _peak_label = (peak_day or {}).get("label", "-")
     _peak_tokens = (peak_day or {}).get("total_tokens", 0)
     _cache_total = grand_cache_read + grand_cache_write
