@@ -27,10 +27,17 @@ def deep_dive(ctx: AggContext) -> dict:
         ("30-60m", 30, 60),
         (">60m", 60, float("inf")),
     ]
-    duration_histogram = []
-    for label, start, end in duration_buckets:
-        count = sum(1 for s in active_sessions if start <= s["minutes"] < end)
-        duration_histogram.append({"label": label, "count": count})
+    # Single-pass histogram instead of N linear scans
+    bucket_counts = [0] * len(duration_buckets)
+    for s in active_sessions:
+        m = s["minutes"]
+        for i, (_, start, end) in enumerate(duration_buckets):
+            if start <= m < end:
+                bucket_counts[i] += 1
+                break
+    duration_histogram = [
+        {"label": duration_buckets[i][0], "count": bucket_counts[i]} for i in range(len(duration_buckets))
+    ]
 
     sorted_minutes = sorted(s["minutes"] for s in active_sessions if s["minutes"] > 0)
     tokens_per_minute = [s["total"] / s["minutes"] for s in active_sessions if s["minutes"] > 0 and s["total"] > 0]

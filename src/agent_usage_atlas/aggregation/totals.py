@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from statistics import median
 
-from ._context import AggContext, _percent, _round_money, _source_rank
+from ._context import AggContext, _percent
 
 
 def compute(ctx: AggContext) -> dict:
-    source_cards = _source_cards(ctx)
+    source_cards = ctx.source_cards
     active_sessions = ctx.active_sessions
     ordered_days = ctx.ordered_days
 
@@ -49,11 +49,10 @@ def compute(ctx: AggContext) -> dict:
     cache_savings_usd = max(0.0, total_cache_read_full - total_cost_cache_read)
     cache_savings_ratio = _percent(cache_savings_usd, total_cache_read_full)
 
-    combined_tool_counts = _combined_tool_counts(ctx)
-    project_count = len(_project_rollups(ctx, active_sessions))
+    combined_tool_counts = ctx.combined_tool_counts
+    project_count = len(ctx.project_rollups)
 
-    recent_window = ordered_days[-7:] if ordered_days else []
-    average_daily_burn = round(sum(d["cost"] for d in recent_window) / len(recent_window), 4) if recent_window else 0.0
+    average_daily_burn = ctx.avg_daily_burn_7d
     projected_total_30d = round(average_daily_burn * 30, 2)
 
     return {
@@ -90,55 +89,9 @@ def compute(ctx: AggContext) -> dict:
 
 
 def source_cards(ctx: AggContext) -> list[dict]:
-    return _source_cards(ctx)
+    return ctx.source_cards
 
 
 def _source_cards(ctx: AggContext) -> list[dict]:
-    cards = []
-    for source_name in sorted(ctx.source_rollups, key=_source_rank):
-        s = ctx.source_rollups[source_name]
-        cards.append(
-            {
-                "source": source_name,
-                "total": s["total_tokens"],
-                "uncached_input": s["uncached_input"],
-                "cache_read": s["cache_read"],
-                "cache_write": s["cache_write"],
-                "output": s["output"],
-                "reasoning": s["reasoning"],
-                "sessions": len(s["sessions"]),
-                "messages": s["messages"],
-                "top_model": s["models"].most_common(1)[0][0] if s["models"] else "-",
-                "token_capable": s["token_capable"],
-                "cost": _round_money(s["cost"]),
-                "cost_input": _round_money(s["cost_input"]),
-                "cost_cache_read": _round_money(s["cost_cache_read"]),
-                "cost_cache_write": _round_money(s["cost_cache_write"]),
-                "cost_output": _round_money(s["cost_output"]),
-                "cost_reasoning": _round_money(s["cost_reasoning"]),
-                "cost_cache_read_full": _round_money(s["cost_cache_read_full"]),
-            }
-        )
-    return cards
-
-
-def _combined_tool_counts(ctx: AggContext):
-    return ctx.combined_tool_counts
-
-
-def _project_rollups(ctx: AggContext, active_sessions):
-    from collections import defaultdict
-
-    project_rollups = defaultdict(
-        lambda: {"project": "", "sessions": 0, "total_tokens": 0, "cost": 0.0, "tool_calls": 0}
-    )
-    for session in active_sessions:
-        meta = ctx.session_meta_map.get((session["source"], session["session_id"]))
-        project_name = (meta.project if meta else None) or "unknown"
-        project = project_rollups[project_name]
-        project["project"] = project_name
-        project["sessions"] += 1
-        project["total_tokens"] += session["total"]
-        project["cost"] += session["cost"]
-        project["tool_calls"] += session["tool_calls"]
-    return project_rollups
+    """Backward-compatible alias — delegates to precomputed ctx.source_cards."""
+    return ctx.source_cards

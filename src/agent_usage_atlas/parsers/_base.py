@@ -194,13 +194,19 @@ def result_cache_files(parser_name: str) -> list[Path] | None:
 def _ts(raw: object) -> datetime | None:
     if not raw:
         return None
-    s = str(raw)
+    s = raw if isinstance(raw, str) else str(raw)
     # Unix timestamp (integer or float, typically 10+ digits)
-    if s.replace(".", "", 1).replace("-", "", 1).isdigit() and len(s.split(".")[0].lstrip("-")) >= 10:
-        try:
-            return datetime.fromtimestamp(float(s), tz=timezone.utc)
-        except (ValueError, OSError, OverflowError):
-            pass
+    # Avoid intermediate string copies: check first char is digit or '-'
+    c0 = s[0]
+    if c0.isdigit() or (c0 == "-" and len(s) > 1):
+        stripped = s.lstrip("-")
+        dot_pos = stripped.find(".")
+        int_part = stripped[:dot_pos] if dot_pos >= 0 else stripped
+        if int_part.isdigit() and len(int_part) >= 10:
+            try:
+                return datetime.fromtimestamp(float(s), tz=timezone.utc)
+            except (ValueError, OSError, OverflowError):
+                pass
     # Git-style date: "Thu Feb 12 15:44:45 2026 +0000"
     if len(s) > 20 and s[0].isalpha():
         try:

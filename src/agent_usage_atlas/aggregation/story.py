@@ -6,9 +6,7 @@ from ._context import SOURCE_ORDER, AggContext, _percent
 
 
 def compute(ctx: AggContext) -> dict:
-    from .totals import _source_cards
-
-    source_cards = _source_cards(ctx)
+    source_cards = ctx.source_cards
 
     grand_total = ctx.grand_total
     grand_cost = ctx.grand_cost
@@ -72,14 +70,8 @@ def compute(ctx: AggContext) -> dict:
         jokes.append("有些来源很勤奋，但没有留下完整 token 小票。")
         jokes_en.append("Some sources work hard but don't leave a full token receipt.")
 
-    # Build hourly rows for tempo notes
-    hourly_rows = []
-    for hour in range(24):
-        row = {"hour": hour}
-        for src in SOURCE_ORDER:
-            hst = ctx.hourly_source_totals.get(hour, {})
-            row[src] = hst.get(src, 0) if isinstance(hst, dict) else 0
-        hourly_rows.append(row)
+    # Use precomputed hourly rows for tempo notes
+    hourly_rows = ctx.hourly_rows
 
     tempo_notes = []
     tempo_notes_en = []

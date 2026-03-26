@@ -2,28 +2,16 @@
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import Counter
 
 from ._context import AggContext
 
 
 def compute(ctx: AggContext) -> dict:
     active_sessions = ctx.active_sessions
-    project_rollups = defaultdict(
-        lambda: {"project": "", "sessions": 0, "total_tokens": 0, "cost": 0.0, "tool_calls": 0}
-    )
+    project_rollups = ctx.project_rollups
     branch_activity = Counter()
     active_session_keys = {(s["source"], s["session_id"]) for s in active_sessions}
-
-    for session in active_sessions:
-        meta = ctx.session_meta_map.get((session["source"], session["session_id"]))
-        project_name = (meta.project if meta else None) or "unknown"
-        project = project_rollups[project_name]
-        project["project"] = project_name
-        project["sessions"] += 1
-        project["total_tokens"] += session["total"]
-        project["cost"] += session["cost"]
-        project["tool_calls"] += session["tool_calls"]
 
     for key, meta in ctx.session_meta_map.items():
         if key in active_session_keys and meta.git_branch:

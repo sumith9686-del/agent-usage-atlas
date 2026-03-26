@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import math
 
+from ..models import fmt_usd
+
 _log = logging.getLogger(__name__)
 
 
@@ -217,7 +219,6 @@ def _vague_prompt_waste(ctx, pd, _ss) -> dict | None:
         return None
     pct = round(ratio * 100, 1)
     wasted = pd.get("estimated_wasted_cost", 0)
-    from ..models import fmt_usd
 
     total_cost = _total_cost_from_ctx(ctx)
     score = _score_insight(
@@ -306,7 +307,6 @@ def _budget_alert(ctx, _pd, _ss) -> dict | None:
     projection = daily_avg * 30
     if projection <= 100:
         return None
-    from ..models import fmt_usd
 
     score = _score_insight(
         financial_pct=min(1.0, projection / 200.0),  # values > 1.0 are clamped by _score_insight
@@ -459,7 +459,6 @@ def _cost_anomaly_cusum(ctx, _pd, _ss) -> dict | None:
     # Compute before/after averages for the shift
     before_avg = sum(active_costs[:shift_index]) / shift_index if shift_index > 0 else mean
     after_avg = sum(active_costs[shift_index:]) / (n - shift_index)
-    from ..models import fmt_usd
 
     ratio = after_avg / before_avg if before_avg > 0 else 0
     total_cost = sum(active_costs)
@@ -520,7 +519,6 @@ def _model_efficiency_ranking(ctx, _pd, _ss) -> dict | None:
     total_cost = sum(e["cost"] for e in efficiencies)
     hypothetical_cost = total_output / 1000 * best["cost_per_1k"]
     savings = total_cost - hypothetical_cost
-    from ..models import fmt_usd
 
     ratio = worst["cost_per_1k"] / best["cost_per_1k"]
     score = _score_insight(

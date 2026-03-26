@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import timedelta
 
 from ._context import AggContext, _percent, _round_money
@@ -21,7 +22,7 @@ def _build_sankey(cards: list[dict], specs: list[tuple[str, str]]) -> dict:
 
 
 def compute(ctx: AggContext) -> dict:
-    source_cards = _get_source_cards(ctx)
+    source_cards = ctx.source_cards
     ordered_days = ctx.ordered_days
 
     model_costs = sorted(
@@ -67,7 +68,7 @@ def compute(ctx: AggContext) -> dict:
     ]
 
     recent_window = ordered_days[-7:] if ordered_days else []
-    average_daily_burn = round(sum(d["cost"] for d in recent_window) / len(recent_window), 4) if recent_window else 0.0
+    average_daily_burn = ctx.avg_daily_burn_7d
     projected_total_30d = round(average_daily_burn * 30, 2)
     projected_cumulative = ordered_days[-1]["cost_cumulative"] if ordered_days else 0.0
     projection = []
@@ -167,8 +168,6 @@ def efficiency(ctx: AggContext) -> dict:
 
 def _token_burn_interval(ctx: AggContext, interval_min: int) -> list[dict]:
     """Bucket raw events into *interval_min*-minute bins."""
-    from collections import defaultdict
-
     if interval_min <= 0:
         raise ValueError(f"interval_min must be a positive integer, got {interval_min!r}")
 
@@ -207,37 +206,38 @@ def token_burn_5min(ctx: AggContext) -> list[dict]:
 
 
 def token_burn_multi(ctx: AggContext) -> dict[str, list[dict]]:
-    """Return burn bins at multiple intervals: 1, 3, 5, 15, 30, 60 min.
+    """Return burn bins at multiple intervals: 5, 30 min.
 
-    Single-pass: compute 1-minute bins once, then roll up to coarser intervals.
+    Single-pass: iterate events once, bucket into all intervals simultaneously.
     """
-    from collections import defaultdict
-
     intervals = [5, 30]
     if not ctx._raw_events:
         return {str(iv): [] for iv in intervals}
 
-    # Single pass: build per-event bins directly at each interval
+    # Single pass over events, bucketing into all intervals at once
+    bins: dict[int, dict[str, dict]] = {iv: {} for iv in intervals}
+    for event in ctx._raw_events:
+        local_ts = event.timestamp.astimezone(ctx.local_tz)
+        total = event.total
+        cost = event.cost
+        prefix = f"{local_ts.year:04d}-{local_ts.month:02d}-{local_ts.day:02d} {local_ts.hour:02d}:"
+        for iv in intervals:
+            minute = (local_ts.minute // iv) * iv
+            bin_key = f"{prefix}{minute:02d}"
+            b = bins[iv].get(bin_key)
+            if b is None:
+                b = {"total": 0, "cost": 0.0}
+                bins[iv][bin_key] = b
+            b["total"] += total
+            b["cost"] += cost
+
     results: dict[str, list[dict]] = {}
     for iv in intervals:
-        coarse: dict[str, dict] = defaultdict(lambda: {"total": 0, "cost": 0.0})
-        for event in ctx._raw_events:
-            local_ts = event.timestamp.astimezone(ctx.local_tz)
-            minute = (local_ts.minute // iv) * iv
-            coarse_key = local_ts.strftime("%Y-%m-%d %H:") + f"{minute:02d}"
-            coarse[coarse_key]["total"] += event.total
-            coarse[coarse_key]["cost"] += event.cost
-        sorted_keys = sorted(coarse.keys())
+        sorted_keys = sorted(bins[iv].keys())
         results[str(iv)] = [
-            {"t": k, "v": coarse[k]["total"], "c": round(coarse[k]["cost"], 4)}
+            {"t": k, "v": bins[iv][k]["total"], "c": round(bins[iv][k]["cost"], 4)}
             for k in sorted_keys
-            if coarse[k]["total"] > 0
+            if bins[iv][k]["total"] > 0
         ]
 
     return results
-
-
-def _get_source_cards(ctx: AggContext) -> list[dict]:
-    from .totals import _source_cards
-
-    return _source_cards(ctx)

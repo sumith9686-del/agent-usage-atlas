@@ -2,24 +2,14 @@
 
 from __future__ import annotations
 
-from ._context import SOURCE_ORDER, WEEKDAYS, AggContext, _percent
+from ._context import WEEKDAYS, AggContext, _percent
 
 
 def compute(ctx: AggContext) -> dict:
     source_cards = _source_cards_for_radar(ctx)
     ordered_days = ctx.ordered_days
 
-    hourly_rows = []
-    for hour in range(24):
-        row = {"hour": hour}
-        for src in SOURCE_ORDER:
-            hst = ctx.hourly_source_totals.get(hour, {})
-            row[src] = hst.get(src, 0) if isinstance(hst, dict) else 0
-        details = ctx.hourly_token_details.get(hour, {})
-        row["output"] = details.get("output", 0)
-        row["reasoning"] = details.get("reasoning", 0)
-        row["cost"] = details.get("cost", 0.0)
-        hourly_rows.append(row)
+    hourly_rows = ctx.hourly_rows
 
     heatmap_rows = []
     for idx in range(7):

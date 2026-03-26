@@ -137,18 +137,25 @@ class UsageEvent:
     activity_messages: int = 0
     _total: int = field(init=False, repr=False, compare=False)
     _cost: float = field(init=False, repr=False, compare=False)
-    _cost_bd: dict[str, float] | None = field(init=False, repr=False, compare=False, default=None)
+    _cost_bd: dict[str, float] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self):
         p = _gp(self.model)
         self._total = self.uncached_input + self.cache_read + self.cache_write + self.output + self.reasoning
-        self._cost = (
-            self.uncached_input * p[0]
-            + self.cache_read * p[1]
-            + self.cache_write * p[2]
-            + self.output * p[3]
-            + self.reasoning * p[4]
-        ) / 1e6
+        ci = self.uncached_input * p[0] / 1e6
+        ccr = self.cache_read * p[1] / 1e6
+        ccw = self.cache_write * p[2] / 1e6
+        co = self.output * p[3] / 1e6
+        cr = self.reasoning * p[4] / 1e6
+        self._cost = ci + ccr + ccw + co + cr
+        self._cost_bd = {
+            "input": ci,
+            "cache_read": ccr,
+            "cache_write": ccw,
+            "output": co,
+            "reasoning": cr,
+            "cache_read_full": self.cache_read * p[0] / 1e6,
+        }
 
     @property
     def total(self):
@@ -160,16 +167,6 @@ class UsageEvent:
 
     @property
     def cost_breakdown(self):
-        if self._cost_bd is None:
-            p = _gp(self.model)
-            self._cost_bd = {
-                "input": self.uncached_input * p[0] / 1e6,
-                "cache_read": self.cache_read * p[1] / 1e6,
-                "cache_write": self.cache_write * p[2] / 1e6,
-                "output": self.output * p[3] / 1e6,
-                "reasoning": self.reasoning * p[4] / 1e6,
-                "cache_read_full": self.cache_read * p[0] / 1e6,
-            }
         return self._cost_bd
 
 

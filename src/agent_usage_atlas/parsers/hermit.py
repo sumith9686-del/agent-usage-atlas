@@ -37,11 +37,25 @@ _ACTION_MAP = {
 }
 
 
+_CONFIG_MODEL_CACHE: dict[str, tuple[float, str]] = {}  # home_str -> (mtime, model)
+
+
 def _read_config_model(home: Path) -> str:
     """Read default model from config.toml, fallback to claude-sonnet-4-6."""
     cfg = home / "config.toml"
     if not cfg.exists():
         return "claude-sonnet-4-6"
+
+    # Cache by mtime to avoid re-parsing unchanged config
+    try:
+        mtime = cfg.stat().st_mtime
+    except OSError:
+        return "claude-sonnet-4-6"
+    home_key = str(home)
+    cached = _CONFIG_MODEL_CACHE.get(home_key)
+    if cached is not None and cached[0] == mtime:
+        return cached[1]
+
     try:
         import tomllib
 
@@ -64,15 +78,21 @@ def _read_config_model(home: Path) -> str:
 
     default_profile = data.get("default_profile", "")
     profiles = data.get("profiles", {})
+    result = "claude-sonnet-4-6"
     if not isinstance(profiles, dict):
-        return data.get("model", "claude-sonnet-4-6")
-    if default_profile and default_profile in profiles:
-        return profiles[default_profile].get("model", "claude-sonnet-4-6")
-    # Try first profile
-    for prof in profiles.values():
-        if isinstance(prof, dict) and "model" in prof:
-            return prof["model"]
-    return data.get("model", "claude-sonnet-4-6")
+        result = data.get("model", "claude-sonnet-4-6")
+    elif default_profile and default_profile in profiles:
+        result = profiles[default_profile].get("model", "claude-sonnet-4-6")
+    else:
+        # Try first profile
+        for prof in profiles.values():
+            if isinstance(prof, dict) and "model" in prof:
+                result = prof["model"]
+                break
+        else:
+            result = data.get("model", "claude-sonnet-4-6")
+    _CONFIG_MODEL_CACHE[home_key] = (mtime, result)
+    return result
 
 
 def parse(start_utc: datetime, now_utc: datetime) -> ParseResult:

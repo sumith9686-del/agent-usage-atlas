@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from pathlib import Path
 
 _FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 
 _template_cache: str | None = None
+_template_lock = threading.Lock()
 
 
 def _read_frontend(relative_path: str) -> str:
@@ -44,11 +46,14 @@ def _assemble_template() -> str:
 
 
 def _get_template() -> str:
-    """Return the assembled HTML skeleton, cached after first read."""
+    """Return the assembled HTML skeleton, cached after first read (thread-safe)."""
     global _template_cache
-    if _template_cache is None:
-        _template_cache = _assemble_template()
-    return _template_cache
+    if _template_cache is not None:
+        return _template_cache
+    with _template_lock:
+        if _template_cache is None:
+            _template_cache = _assemble_template()
+        return _template_cache
 
 
 _PLACEHOLDER_RE = re.compile(r"__DATA__|__POLL_MS__|__LIVE_MODE__")

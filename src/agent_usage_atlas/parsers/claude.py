@@ -73,20 +73,20 @@ def _parse_single_file(
     meta_seen: set[str] = set()
     turn_durations: list[TurnDuration] = []
     user_messages: list[UserMessage] = []
+    err_set: set[str] = set()  # tool_use_ids that had errors
 
-    # First pass for err_map
-    err_map: dict[str, bool] = {}
-    for obj in objs:
-        if obj.get("type") == "user":
-            for blk in (obj.get("message") or {}).get("content") or []:
-                if isinstance(blk, dict) and blk.get("type") == "tool_result":
-                    err_map[blk.get("tool_use_id", "")] = bool(blk.get("is_error"))
-
-    # Main pass
+    # Single pass: build err_set and process events simultaneously.
+    # Tool-result blocks in "user" messages always appear before the
+    # assistant response that references them, so err_set is populated
+    # in time for the tool_use block lookup below.
     for obj in objs:
         obj_type = obj.get("type")
 
         if obj_type == "user":
+            # Build err_set inline (replaces the old separate first pass)
+            for blk in (obj.get("message") or {}).get("content") or []:
+                if isinstance(blk, dict) and blk.get("type") == "tool_result" and blk.get("is_error"):
+                    err_set.add(blk.get("tool_use_id", ""))
             sid = str(obj.get("sessionId") or path.stem)
             if sid not in meta_seen:
                 meta_seen.add(sid)
@@ -168,7 +168,7 @@ def _parse_single_file(
                 if tn in ("Grep", "Glob")
                 else None
             )
-            ec = 1 if err_map.get(blk.get("id", "")) else None
+            ec = 1 if blk.get("id", "") in err_set else None
             calls.append(ToolCall("Claude", ts, sid, tn, ec, fp, cmd))
 
     return event_dedup, calls, metas, meta_seen, turn_durations, user_messages

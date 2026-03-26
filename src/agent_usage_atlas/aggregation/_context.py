@@ -10,9 +10,12 @@ from pathlib import Path
 SOURCE_ORDER = ["Codex", "Claude", "Hermit", "Cursor"]
 WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
+_SOURCE_RANK_MAP = {name: i for i, name in enumerate(SOURCE_ORDER)}
+_SOURCE_RANK_DEFAULT = len(SOURCE_ORDER)
+
 
 def _source_rank(name: str) -> int:
-    return SOURCE_ORDER.index(name) if name in SOURCE_ORDER else len(SOURCE_ORDER)
+    return _SOURCE_RANK_MAP.get(name, _SOURCE_RANK_DEFAULT)
 
 
 def _round_money(value: float) -> float:
@@ -88,6 +91,18 @@ class AggContext:
 
     # Precomputed active sessions (avoids redundant recomputation in sessions/totals/projects)
     active_sessions: list = field(default_factory=list)
+
+    # Precomputed project rollups (shared by totals and projects modules)
+    project_rollups: dict = field(default_factory=dict)
+
+    # Precomputed source cards (shared by totals, story, trends modules)
+    source_cards: list = field(default_factory=list)
+
+    # Precomputed hourly rows (shared by patterns and story modules)
+    hourly_rows: list = field(default_factory=list)
+
+    # Precomputed recent-window aggregates (shared by totals and trends)
+    avg_daily_burn_7d: float = 0.0
 
     @property
     def range_info(self) -> dict:
@@ -315,10 +330,18 @@ def build_context(
             elif tool_call.exit_code == 0:
                 day["command_successes"] += 1
 
-    # ── Build ordered_days ──
+    # ── Build ordered_days ── (accumulate grand totals inline)
     ordered_days = []
     cumulative_tokens = 0
     cumulative_cost = 0.0
+    _grand_total = 0
+    _grand_cost = 0.0
+    _grand_cache_read = 0
+    _grand_cache_write = 0
+    _peak_day = None
+    _cost_peak_day = None
+    _peak_tokens = -1
+    _peak_cost = -1.0
     current_date = start_local.date()
     while current_date <= now_local.date():
         date_key = current_date.isoformat()
@@ -329,51 +352,49 @@ def build_context(
         day["label"] = _date_labels[date_key]
         cumulative_tokens += day["total_tokens"]
         cumulative_cost += day["cost"]
-        ordered_days.append(
-            {
-                "date": day["date"],
-                "label": day["label"],
-                "total_tokens": day["total_tokens"],
-                "uncached_input": day["uncached_input"],
-                "cache_read": day["cache_read"],
-                "cache_write": day["cache_write"],
-                "output": day["output"],
-                "reasoning": day["reasoning"],
-                "messages": day["messages"],
-                "source_totals": dict(day["source_totals"]),
-                "cumulative_tokens": cumulative_tokens,
-                "cost": _round_money(day["cost"]),
-                "cost_sources": {k: _round_money(v) for k, v in day["cost_sources"].items()},
-                "cost_cumulative": _round_money(cumulative_cost),
-                "cost_input": _round_money(day["cost_input"]),
-                "cost_cache_read": _round_money(day["cost_cache_read"]),
-                "cost_cache_write": _round_money(day["cost_cache_write"]),
-                "cost_output": _round_money(day["cost_output"]),
-                "cost_reasoning": _round_money(day["cost_reasoning"]),
-                "tool_calls": day["tool_calls"],
-                "command_successes": day["command_successes"],
-                "command_failures": day["command_failures"],
-                "models": dict(day["models"]),
-            }
-        )
-        current_date += timedelta(days=1)
 
-    # Precompute grand totals for downstream modules
-    _grand_total = sum(d["total_tokens"] for d in ordered_days)
-    _grand_cost = sum(daily_rollups[d["date"]]["cost"] for d in ordered_days)
-    _grand_cache_read = sum(d["cache_read"] for d in ordered_days)
-    _grand_cache_write = sum(d["cache_write"] for d in ordered_days)
-    _peak_day = None
-    _cost_peak_day = None
-    _peak_tokens = -1
-    _peak_cost = -1.0
-    for d in ordered_days:
-        if d["total_tokens"] > _peak_tokens:
-            _peak_tokens = d["total_tokens"]
-            _peak_day = d
-        if d["cost"] > _peak_cost:
-            _peak_cost = d["cost"]
-            _cost_peak_day = d
+        # Accumulate grand totals
+        _grand_total += day["total_tokens"]
+        _grand_cost += day["cost"]
+        _grand_cache_read += day["cache_read"]
+        _grand_cache_write += day["cache_write"]
+
+        day_entry = {
+            "date": day["date"],
+            "label": day["label"],
+            "total_tokens": day["total_tokens"],
+            "uncached_input": day["uncached_input"],
+            "cache_read": day["cache_read"],
+            "cache_write": day["cache_write"],
+            "output": day["output"],
+            "reasoning": day["reasoning"],
+            "messages": day["messages"],
+            "source_totals": dict(day["source_totals"]),
+            "cumulative_tokens": cumulative_tokens,
+            "cost": _round_money(day["cost"]),
+            "cost_sources": {k: _round_money(v) for k, v in day["cost_sources"].items()},
+            "cost_cumulative": _round_money(cumulative_cost),
+            "cost_input": _round_money(day["cost_input"]),
+            "cost_cache_read": _round_money(day["cost_cache_read"]),
+            "cost_cache_write": _round_money(day["cost_cache_write"]),
+            "cost_output": _round_money(day["cost_output"]),
+            "cost_reasoning": _round_money(day["cost_reasoning"]),
+            "tool_calls": day["tool_calls"],
+            "command_successes": day["command_successes"],
+            "command_failures": day["command_failures"],
+            "models": dict(day["models"]),
+        }
+        ordered_days.append(day_entry)
+
+        # Track peaks inline
+        if day_entry["total_tokens"] > _peak_tokens:
+            _peak_tokens = day_entry["total_tokens"]
+            _peak_day = day_entry
+        if day_entry["cost"] > _peak_cost:
+            _peak_cost = day_entry["cost"]
+            _cost_peak_day = day_entry
+
+        current_date += timedelta(days=1)
 
     # Precompute combined tool counts for downstream modules
     _combined_tool_counts = Counter()
@@ -409,16 +430,79 @@ def build_context(
         )
     _active_sessions.sort(key=lambda i: (i["total"], i["cost"], i["tool_calls"]), reverse=True)
 
+    # Precompute project rollups (shared by totals and projects modules)
+    _project_rollups: dict[str, dict] = {}
+    for session in _active_sessions:
+        meta = session_meta_map.get((session["source"], session["session_id"]))
+        project_name = (meta.project if meta else None) or "unknown"
+        proj = _project_rollups.get(project_name)
+        if proj is None:
+            proj = {"project": project_name, "sessions": 0, "total_tokens": 0, "cost": 0.0, "tool_calls": 0}
+            _project_rollups[project_name] = proj
+        proj["sessions"] += 1
+        proj["total_tokens"] += session["total"]
+        proj["cost"] += session["cost"]
+        proj["tool_calls"] += session["tool_calls"]
+
+    # Precompute source cards (shared by totals, story, trends)
+    _source_cards_list = []
+    _source_rollups_dict = dict(source_rollups)
+    for source_name in sorted(_source_rollups_dict, key=_source_rank):
+        s = _source_rollups_dict[source_name]
+        _source_cards_list.append(
+            {
+                "source": source_name,
+                "total": s["total_tokens"],
+                "uncached_input": s["uncached_input"],
+                "cache_read": s["cache_read"],
+                "cache_write": s["cache_write"],
+                "output": s["output"],
+                "reasoning": s["reasoning"],
+                "sessions": len(s["sessions"]),
+                "messages": s["messages"],
+                "top_model": s["models"].most_common(1)[0][0] if s["models"] else "-",
+                "token_capable": s["token_capable"],
+                "cost": _round_money(s["cost"]),
+                "cost_input": _round_money(s["cost_input"]),
+                "cost_cache_read": _round_money(s["cost_cache_read"]),
+                "cost_cache_write": _round_money(s["cost_cache_write"]),
+                "cost_output": _round_money(s["cost_output"]),
+                "cost_reasoning": _round_money(s["cost_reasoning"]),
+                "cost_cache_read_full": _round_money(s["cost_cache_read_full"]),
+            }
+        )
+
+    # Precompute hourly rows (shared by patterns and story)
+    _hourly_rows = []
+    _hourly_source_dict = dict(hourly_source_totals)
+    _hourly_details_dict = dict(hourly_token_details)
+    for hour in range(24):
+        row: dict = {"hour": hour}
+        hst = _hourly_source_dict.get(hour, {})
+        for src in SOURCE_ORDER:
+            row[src] = hst.get(src, 0) if isinstance(hst, dict) else 0
+        details = _hourly_details_dict.get(hour, {})
+        row["output"] = details.get("output", 0)
+        row["reasoning"] = details.get("reasoning", 0)
+        row["cost"] = details.get("cost", 0.0)
+        _hourly_rows.append(row)
+
+    # Precompute recent-window average daily burn (shared by totals and trends)
+    _recent_window = ordered_days[-7:] if ordered_days else []
+    _avg_daily_burn_7d = (
+        round(sum(d["cost"] for d in _recent_window) / len(_recent_window), 4) if _recent_window else 0.0
+    )
+
     return AggContext(
         start_local=start_local,
         now_local=now_local,
         local_tz=local_tz,
-        source_rollups=dict(source_rollups),
+        source_rollups=_source_rollups_dict,
         daily_rollups=dict(daily_rollups),
         session_rollups=dict(session_rollups),
         session_meta_map=session_meta_map,
-        hourly_source_totals=dict(hourly_source_totals),
-        hourly_token_details=dict(hourly_token_details),
+        hourly_source_totals=_hourly_source_dict,
+        hourly_token_details=_hourly_details_dict,
         weekday_hour_heatmap=dict(weekday_hour_heatmap),
         tool_counts_by_source=dict(tool_counts_by_source),
         tool_sequences=dict(tool_sequences),
@@ -439,6 +523,10 @@ def build_context(
         _raw_events=sorted_events,
         raw_tool_calls=sorted_tool_calls,
         active_sessions=_active_sessions,
+        project_rollups=_project_rollups,
+        source_cards=_source_cards_list,
+        hourly_rows=_hourly_rows,
+        avg_daily_burn_7d=_avg_daily_burn_7d,
         grand_total=_grand_total,
         grand_cost=_grand_cost,
         grand_cache_read=_grand_cache_read,

@@ -54,7 +54,14 @@ def _turn_durations(ctx: AggContext) -> dict:
         ("1-5m", 60000, 300000),
         (">5m", 300000, float("inf")),
     ]
-    histogram = [{"label": lbl, "count": sum(1 for d in dur_all if lo <= d < hi)} for lbl, lo, hi in dur_buckets]
+    # Single-pass histogram instead of N linear scans
+    bucket_counts = [0] * len(dur_buckets)
+    for d in dur_all:
+        for i, (_, lo, hi) in enumerate(dur_buckets):
+            if lo <= d < hi:
+                bucket_counts[i] += 1
+                break
+    histogram = [{"label": dur_buckets[i][0], "count": bucket_counts[i]} for i in range(len(dur_buckets))]
 
     daily = []
     current_date = ctx.start_local.date()
@@ -75,8 +82,13 @@ def _turn_durations(ctx: AggContext) -> dict:
 
 
 def _task_stats(ctx: AggContext) -> dict:
-    started = sum(1 for te in ctx.task_events if te.event_type == "started")
-    completed = sum(1 for te in ctx.task_events if te.event_type == "complete")
+    started = 0
+    completed = 0
+    for te in ctx.task_events:
+        if te.event_type == "started":
+            started += 1
+        elif te.event_type == "complete":
+            completed += 1
     return {
         "started": started,
         "completed": completed,

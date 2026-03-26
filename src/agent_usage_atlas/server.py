@@ -29,9 +29,9 @@ from .builder import build_html
 from .cli import build_dashboard_payload
 from .parsers import CLAUDE_ROOT, CODEX_ROOTS, CURSOR_ROOT, HERMIT_ROOTS
 
-_PAYLOAD_CACHE: OrderedDict[tuple[int, str | None], tuple[dict, str, bytes, bytes, tuple[int, int, int]]] = (
-    OrderedDict()
-)
+_PAYLOAD_CACHE: OrderedDict[
+    tuple[int, str | None], tuple[dict, str, bytes, bytes, tuple[int, int, int], dict[int, bytes]]
+] = OrderedDict()
 _PAYLOAD_LOCK = threading.Lock()
 _PAYLOAD_CACHE_MAX = 8
 _BUILD_LOCK = threading.Lock()  # serialize parse_all to avoid _ACTIVE_RANGE race
@@ -158,7 +158,7 @@ def _cached_payload(days: int, since: str | None) -> tuple[dict, str, bytes, byt
     with _PAYLOAD_LOCK:
         entry = _PAYLOAD_CACHE.get(key)
         if entry is not None:
-            payload, etag, json_bytes, gzip_bytes, payload_sig = entry
+            payload, etag, json_bytes, gzip_bytes, payload_sig, _html_cache = entry
             if payload_sig == signature:
                 _PAYLOAD_CACHE.move_to_end(key)
                 return payload, etag, json_bytes, gzip_bytes
@@ -171,7 +171,7 @@ def _cached_payload(days: int, since: str | None) -> tuple[dict, str, bytes, byt
         with _PAYLOAD_LOCK:
             entry = _PAYLOAD_CACHE.get(key)
             if entry is not None:
-                payload, etag, json_bytes, gzip_bytes, payload_sig = entry
+                payload, etag, json_bytes, gzip_bytes, payload_sig, _html_cache = entry
                 if payload_sig == signature:
                     _PAYLOAD_CACHE.move_to_end(key)
                     return payload, etag, json_bytes, gzip_bytes
@@ -181,7 +181,7 @@ def _cached_payload(days: int, since: str | None) -> tuple[dict, str, bytes, byt
         gzip_bytes = gzip.compress(json_bytes, compresslevel=6)
         # Re-compute signature AFTER build to capture any file changes during build
         post_build_sig = _payload_signature()
-        cache_entry = (payload, etag, json_bytes, gzip_bytes, post_build_sig)
+        cache_entry = (payload, etag, json_bytes, gzip_bytes, post_build_sig, {})
         with _PAYLOAD_LOCK:
             _PAYLOAD_CACHE[key] = cache_entry
             _PAYLOAD_CACHE.move_to_end(key)
@@ -313,15 +313,44 @@ class DashboardHandler(BaseHTTPRequestHandler):
         return "gzip" in (self.headers.get("Accept-Encoding") or "")
 
     def _write_index(self) -> None:
+        poll_ms = max(2000, self.default_interval * 1000)
+        key = (self.default_days, self.default_since)
+
+        # Try to serve cached compressed HTML
+        with _PAYLOAD_LOCK:
+            entry = _PAYLOAD_CACHE.get(key)
+            if entry is not None:
+                html_cache = entry[5]
+                cached_body = html_cache.get(poll_ms)
+                if cached_body is not None:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("Vary", "Accept-Encoding")
+                    if self._accepts_gzip():
+                        self.send_header("Content-Encoding", "gzip")
+                    self.send_header("Content-Length", str(len(cached_body)))
+                    self._send_security_headers()
+                    self.end_headers()
+                    self.wfile.write(cached_body)
+                    return
+
         payload, _, __, ___ = _cached_payload(days=self.default_days, since=self.default_since)
-        template = build_html(payload, poll_interval_ms=max(2000, self.default_interval * 1000), live=True)
+        template = build_html(payload, poll_interval_ms=poll_ms, live=True)
         body = template.encode("utf-8")
+        body = gzip.compress(body, compresslevel=6)
+
+        # Cache the compressed HTML for future requests
+        with _PAYLOAD_LOCK:
+            entry = _PAYLOAD_CACHE.get(key)
+            if entry is not None:
+                entry[5][poll_ms] = body
+
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Vary", "Accept-Encoding")
         if self._accepts_gzip():
-            body = gzip.compress(body, compresslevel=6)
             self.send_header("Content-Encoding", "gzip")
         self.send_header("Content-Length", str(len(body)))
         self._send_security_headers()
